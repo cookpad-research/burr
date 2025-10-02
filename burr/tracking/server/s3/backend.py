@@ -345,6 +345,8 @@ class SQLiteS3Backend(BackendBase, IndexingBackendMixin, SnapshottingBackendMixi
                     paths_to_update.append(DataFile.from_path(key, created_date=last_modified))
                     if len(paths_to_update) >= max_paths:
                         break
+                if len(paths_to_update) >= max_paths:
+                    break
         logger.info(f"Found {len(paths_to_update)} new files to index")
         return paths_to_update
 
