@@ -1,0 +1,62 @@
+# Build stage for frontend
+FROM node:18-slim AS frontend-builder
+
+WORKDIR /app
+COPY telemetry/ui/package*.json ./telemetry/ui/
+RUN cd telemetry/ui && npm install
+COPY telemetry/ui ./telemetry/ui
+RUN cd telemetry/ui && npm run build
+
+# Production stage
+FROM python:3.11-slim
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    BURR_S3_BUCKET=lambda-nlp-burr-dev \
+    BURR_load_snapshot_on_start=True \
+    BURR_snapshot_interval_milliseconds=3600000 \
+    BURR_update_interval_milliseconds=5000 \
+    BURR_BACKEND_IMPL=burr.tracking.server.s3.backend.SQLiteS3Backend \
+    BURR_SERVE_STATIC=true
+
+# Optional build argument to install from PyPI
+ARG INSTALL_FROM_PYPI=false
+
+# Install system deps
+RUN apt-get update && apt-get install -y \
+    git \
+    nginx \
+    gcc \
+ && rm -rf /var/lib/apt/lists/*
+
+# Copy local repo
+WORKDIR /app
+COPY . .
+
+# Copy built frontend from builder stage
+COPY --from=frontend-builder /app/telemetry/ui/build ./burr/tracking/server/build
+
+COPY s3_server_nginx.conf /etc/nginx/nginx.conf
+COPY s3_server_entrypoint.sh /entrypoint.sh
+
+# Install Python dependencies
+RUN pip install loguru
+
+# If INSTALL_FROM_PYPI is true, install from PyPI; else install local version
+RUN if [ "$INSTALL_FROM_PYPI" = "true" ]; then \
+        pip install "burr[tracking-server-s3]"; \
+    else \
+        pip install ./[tracking-server-s3]; \
+    fi
+
+# Test installation
+RUN python -c "import burr; print('Burr version:', getattr(burr, '__version__', 'no version'))"
+
+# Expose the port FastAPI will run on and the port NGINX will listen to
+EXPOSE 8000
+EXPOSE 80
+
+# Entrypoint
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
