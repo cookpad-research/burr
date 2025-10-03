@@ -60,5 +60,5 @@ jobs:
           ECR_APP_REPO: ${{ inputs.image_name }}
           GIT_SHA: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/${{ inputs.env }}/${{ inputs.image_name }}:${{ inputs.image_name }}-$GIT_SHA ./deployment/Dockerfile
+          docker build -t $ECR_REGISTRY/${{ inputs.env }}/${{ inputs.image_name }}:${{ inputs.image_name }}-$GIT_SHA ./s3_server_Dockerfile
           docker push $ECR_REGISTRY/${{ inputs.env }}/${{ inputs.image_name }}:${{ inputs.image_name }}-$GIT_SHA

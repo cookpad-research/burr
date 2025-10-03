@@ -23,8 +23,8 @@ EXPOSE 8000
 EXPOSE 80
 ENV BURR_S3_BUCKET=lambda-nlp-burr-dev
 ENV BURR_load_snapshot_on_start=True
-ENV BURR_snapshot_interval_milliseconds=3000000
-ENV BURR_update_interval_milliseconds=20000
+ENV BURR_snapshot_interval_milliseconds=3_600_000
+ENV BURR_update_interval_milliseconds=1000
 ENV BURR_BACKEND_IMPL=s3
 ENV DEBIAN_FRONTEND=noninteractive
 ENV BURR_BACKEND_IMPL=burr.tracking.server.s3.backend.SQLiteS3Backend
