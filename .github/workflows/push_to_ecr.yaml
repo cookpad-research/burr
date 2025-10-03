@@ -1,0 +1,64 @@
+on:
+  workflow_call:
+    inputs:
+      env:
+        required: true
+        type: string
+      aws_account_id:
+        required: true
+        type: number
+      aws_region:
+        required: false
+        type: string
+        default: ap-northeast-1
+      working_directory:
+        description: Directory of project in this repo (should contain the helm/ sub-directory)
+        required: true
+        type: string
+      image_name:
+        description: Required if push_image is true
+        required: false
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+
+jobs:
+  build-and-push:
+    runs-on: ["ubuntu-latest"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Install AWS CLI
+        id: install-aws-cli
+        uses: unfor19/install-aws-cli-action@v1.0.3
+        with:
+          version: 2
+          verbose: false
+          arch: amd64
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1-node16
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and push image
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_APP_REPO: ${{ inputs.image_name }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/${{ inputs.env }}/${{ inputs.image_name }}:${{ inputs.image_name }}-$GIT_SHA ./s3_server_Dockerfile
+          docker push $ECR_REGISTRY/${{ inputs.env }}/${{ inputs.image_name }}:${{ inputs.image_name }}-$GIT_SHA
