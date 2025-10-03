@@ -1,0 +1,21 @@
+name: Platdev:burr-tracker:Push to ECR
+
+on:
+  push:
+    paths:
+      - 'burr/tracking/server/s3/**'
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  release:
+    uses: ./.github/workflows/push_to_ecr.yaml
+    with:
+      env: platdev
+      aws_account_id: 885834555500
+      working_directory: ./burr/tracking/server/s3
+      image_name: burr-tracker
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
