@@ -12,7 +12,7 @@ jobs:
   release:
     uses: ./.github/workflows/push_to_ecr.yaml
     with:
-      env: platdev
+      env: production
       aws_account_id: 885834555500
       working_directory: ./
       image_name: burr-tracker
