@@ -1,4 +1,4 @@
-name: Production:burr-tracker:Push to ECR
+name: Platdev:burr-tracker:Push to ECR
 
 on:
   push:
