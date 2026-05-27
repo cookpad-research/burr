@@ -1,3 +1,22 @@
+<!--
+     Licensed to the Apache Software Foundation (ASF) under one
+     or more contributor license agreements.  See the NOTICE file
+     distributed with this work for additional information
+     regarding copyright ownership.  The ASF licenses this file
+     to you under the Apache License, Version 2.0 (the
+     "License"); you may not use this file except in compliance
+     with the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing,
+     software distributed under the License is distributed on an
+     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+     KIND, either express or implied.  See the License for the
+     specific language governing permissions and limitations
+     under the License.
+-->
+
 # A SDLC with Burr and pytest
 Here we show a quick example of a software development lifecycle (SDLC) with Burr and pytest.
 
@@ -188,7 +207,7 @@ def test_my_agent(input, expected_output, results_bag):
 ### Using Burr's pytest Hook
 With Burr you can curate test cases from real application runs. You can then use these test cases in your pytest suite.
 Burr has a hook that enables you to curate a file with the input state and expected output state for an entire run,
-or a single action.  See the [Burr test case creation documentation](https://burr.dagworks.io/examples/guardrails/creating_tests/) for more
+or a single action.  See the [Burr test case creation documentation](https://burr.apache.org/examples/guardrails/creating_tests/) for more
 details on how. Here we show you how you can combine this with getting results:
 
 ```python

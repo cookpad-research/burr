@@ -1,3 +1,20 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 import abc
 import collections
 import importlib
@@ -145,6 +162,31 @@ class SnapshottingBackendMixin(abc.ABC):
         pass
 
 
+class EventDrivenBackendMixin(abc.ABC):
+    """Mixin for backends that support event-driven updates.
+
+    Enables backends to receive real-time notifications instead of polling
+    for new files.
+    """
+
+    @abc.abstractmethod
+    async def start_event_consumer(self):
+        """Start the event consumer for event-driven tracking.
+
+        This method should run indefinitely, processing event notifications
+        from the configured message queue.
+        """
+        pass
+
+    @abc.abstractmethod
+    def is_event_driven(self) -> bool:
+        """Check if this backend is configured for event-driven updates.
+
+        :return: True if event-driven mode is enabled and configured, False otherwise
+        """
+        pass
+
+
 class BackendBase(abc.ABC):
     async def lifespan(self, app: FastAPI):
         """Quick tool to allow plugin to the app's lifecycle.
@@ -240,10 +282,10 @@ def safe_json_load(line: bytes):
 
 def get_uri(project_id: str) -> str:
     project_id_map = {
-        "demo_counter": "https://github.com/DAGWorks-Inc/burr/tree/main/examples/hello-world-counter",
-        "demo_tracing": "https://github.com/DAGWorks-Inc/burr/tree/main/examples/tracing-and-spans/application.py",
-        "demo_chatbot": "https://github.com/DAGWorks-Inc/burr/tree/main/examples/multi-modal-chatbot",
-        "demo_conversational-rag": "https://github.com/DAGWorks-Inc/burr/tree/main/examples/conversational-rag",
+        "demo_counter": "https://github.com/apache/burr/tree/main/examples/hello-world-counter",
+        "demo_tracing": "https://github.com/apache/burr/tree/main/examples/tracing-and-spans/application.py",
+        "demo_chatbot": "https://github.com/apache/burr/tree/main/examples/multi-modal-chatbot",
+        "demo_conversational-rag": "https://github.com/apache/burr/tree/main/examples/conversational-rag",
     }
     return project_id_map.get(project_id, "")
 

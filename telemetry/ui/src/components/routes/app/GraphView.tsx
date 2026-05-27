@@ -1,7 +1,26 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 import { ActionModel, ApplicationModel, Step } from '../../../api';
 
-import ELK from 'elkjs/lib/elk.bundled.js';
-import React, { createContext, useCallback, useLayoutEffect, useRef, useState } from 'react';
+import dagre from 'dagre';
+import React, { createContext, useLayoutEffect, useRef, useState } from 'react';
 import ReactFlow, {
   BaseEdge,
   Controls,
@@ -20,16 +39,14 @@ import { backgroundColorsForIndex } from './AppView';
 import { getActionStatus } from '../../../utils';
 import { getSmartEdge } from '@tisoap/react-flow-smart-edge';
 
-const elk = new ELK();
+const dagreGraph = new dagre.graphlib.Graph();
 
-const elkOptions = {
-  'elk.algorithm': 'layered',
-  'elk.layered.spacing.nodeNodeBetweenLayers': '100',
-  'elk.spacing.nodeNode': '80',
-  'org.eclipse.elk.alg.layered.options.CycleBreakingStrategy': 'GREEDY',
-  'org.eclipse.elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
-  // 'org.eclipse.elk.layered.feedbackEdges': 'true',
-  'org.eclipse.elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP'
+const dagreOptions = {
+  rankdir: 'TB', // Top to bottom layout (equivalent to ELK's UP direction)
+  nodesep: 80, // Node separation (equivalent to elk.spacing.nodeNode)
+  ranksep: 100, // Rank separation (equivalent to elk.layered.spacing.nodeNodeBetweenLayers)
+  marginx: 20,
+  marginy: 20
 };
 
 type ActionNodeData = {
@@ -181,71 +198,62 @@ const getLayoutedElements = (
   edges: EdgeType[],
   options: { [key: string]: string } = {}
 ) => {
-  const isHorizontal = options?.['elk.direction'] === 'RIGHT';
-  const nodeNameMap = nodes.reduce(
-    (acc, node) => {
-      acc[node.id] = node;
-      return acc;
-    },
-    {} as { [key: string]: NodeType }
-  );
-  const edgeNameMap = edges.reduce(
-    (acc, edge) => {
-      acc[edge.id] = edge;
-      return acc;
-    },
-    {} as { [key: string]: EdgeType }
-  );
-  const graph = {
-    id: 'root',
-    layoutOptions: options,
-    children: nodes.map((node) => ({
-      ...node,
-      // Adjust the target and source handle positions based on the layout
-      // direction.
-      targetPosition: isHorizontal ? 'left' : 'top',
-      sourcePosition: isHorizontal ? 'right' : 'bottom',
+  const isHorizontal = options?.['direction'] === 'LR';
+  const direction = isHorizontal ? 'LR' : 'TB';
 
-      // Hardcode a width and height for elk to use when layouting.
+  // Configure dagre graph
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+  dagreGraph.setGraph({
+    ...dagreOptions,
+    rankdir: direction
+  });
+
+  // Add nodes to dagre graph
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, {
       width: 150,
       height: 100
-    })),
-    edges: edges.map((edge) => {
-      return {
-        ...edge,
-        sources: [edge.source],
-        targets: [edge.target]
-      };
-    })
-  };
-  return elk.layout(graph).then((layoutedGraph) => ({
-    nodes: (layoutedGraph.children || []).map((node) => {
-      const originalNode = nodeNameMap[node.id];
-      return {
-        ...originalNode,
-        position: {
-          x: node.x as number,
-          y: node.y as number
-        }
-      };
-    }),
-    edges: (layoutedGraph?.edges || []).map((edge) => {
-      return {
-        ...edge,
-        markerEnd: { type: MarkerType.Arrow, width: 20, height: 20 },
-        source: edge.sources[0],
-        target: edge.targets[0],
-        data: {
-          from: edge.sources[0],
-          to: edge.targets[0],
-          condition: edgeNameMap[edge.id].data.condition
-        }
-      };
-    })
+    });
+  });
+
+  // Add edges to dagre graph
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  // Calculate layout
+  dagre.layout(dagreGraph);
+
+  // Apply layout to nodes
+  const layoutedNodes = nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    return {
+      ...node,
+      targetPosition: isHorizontal ? 'left' : 'top',
+      sourcePosition: isHorizontal ? 'right' : 'bottom',
+      position: {
+        x: nodeWithPosition.x - 75, // Center the node (width/2)
+        y: nodeWithPosition.y - 50 // Center the node (height/2)
+      }
+    };
+  });
+
+  // Apply layout to edges
+  const layoutedEdges = edges.map((edge) => ({
+    ...edge,
+    markerEnd: { type: MarkerType.Arrow, width: 20, height: 20 }
   }));
+
+  return Promise.resolve({
+    nodes: layoutedNodes,
+    edges: layoutedEdges
+  });
 };
 
-const convertApplicationToGraph = (stateMachine: ApplicationModel): [NodeType[], EdgeType[]] => {
+const convertApplicationToGraph = (
+  stateMachine: ApplicationModel,
+  showInputs: boolean
+): [NodeType[], EdgeType[]] => {
   const shouldDisplayInput = (input: string) => !input.startsWith('__');
   const inputUniqueID = (action: ActionModel, input: string) => `${action.name}:${input}`; // Currently they're distinct by name
 
@@ -280,10 +288,12 @@ const convertApplicationToGraph = (stateMachine: ApplicationModel): [NodeType[],
     markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 },
     data: { from: transition.from_, to: transition.to, condition: transition.condition }
   }));
-  return [
-    [...allActionNodes, ...allInputNodes],
-    [...allInputTransitions, ...allTransitionEdges]
-  ];
+  return showInputs
+    ? [
+        [...allActionNodes, ...allInputNodes],
+        [...allInputTransitions, ...allTransitionEdges]
+      ]
+    : [[...allActionNodes], [...allTransitionEdges]];
 };
 
 const nodeTypes = {
@@ -312,34 +322,25 @@ export const _Graph = (props: {
   previousActions: Step[] | undefined;
   hoverAction: Step | undefined;
 }) => {
-  const [initialNodes, initialEdges] = React.useMemo(() => {
-    return convertApplicationToGraph(props.stateMachine);
-  }, [props.stateMachine]);
+  const [showInputs, setShowInputs] = useState(true);
 
   const [nodes, setNodes] = useState<NodeType[]>([]);
   const [edges, setEdges] = useState<EdgeType[]>([]);
 
   const { fitView } = useReactFlow();
 
-  const onLayout = useCallback(
-    ({ direction = 'UP', useInitialNodes = false }): void => {
-      const opts = { 'elk.direction': direction, ...elkOptions };
-      const ns = useInitialNodes ? initialNodes : nodes;
-      const es = useInitialNodes ? initialEdges : edges;
+  useLayoutEffect(() => {
+    const [nextNodes, nextEdges] = convertApplicationToGraph(props.stateMachine, showInputs);
 
-      getLayoutedElements(ns, es, opts).then(({ nodes: layoutedNodes, edges: layoutedEdges }) => {
+    getLayoutedElements(nextNodes, nextEdges, { direction: 'TB' }).then(
+      ({ nodes: layoutedNodes, edges: layoutedEdges }) => {
         setNodes(layoutedNodes);
         setEdges(layoutedEdges);
 
         window.requestAnimationFrame(() => fitView());
-      });
-    },
-    [nodes, edges]
-  );
-
-  useLayoutEffect(() => {
-    onLayout({ direction: 'DOWN', useInitialNodes: true });
-  }, []);
+      }
+    );
+  }, [showInputs, props.stateMachine, fitView]);
 
   return (
     <NodeStateProvider.Provider
@@ -350,6 +351,11 @@ export const _Graph = (props: {
       }}
     >
       <div className="h-full w-full relative">
+        <label className="absolute top-2 left-2 z-10 bg-white p-2 rounded shadow">
+          <input type="checkbox" checked={showInputs} onChange={() => setShowInputs(!showInputs)} />
+          <span className="ml-2">Show Inputs</span>
+        </label>
+
         <ReactFlow
           nodes={nodes}
           edges={edges}

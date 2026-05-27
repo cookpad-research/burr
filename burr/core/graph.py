@@ -1,3 +1,20 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 import collections
 import dataclasses
 import inspect
@@ -5,7 +22,6 @@ import logging
 import pathlib
 from typing import Any, Callable, List, Literal, Optional, Set, Tuple, Union
 
-from burr import telemetry
 from burr.core.action import Action, Condition, create_action, default
 from burr.core.state import State
 from burr.core.validation import BASE_ERROR_MESSAGE, assert_set
@@ -79,21 +95,19 @@ def _render_graphviz(
 
     if output_file_path.suffix != "":
         # infer format from path; i.e., extract `svg` from the `.svg` suffix
-        format = output_file_path.suffix.partition(".")[-1]
+        fmt = output_file_path.suffix.partition(".")[-1]
     else:
-        format = "png"
+        fmt = "png"
 
     path_without_suffix = pathlib.Path(output_file_path.parent, output_file_path.stem)
     if write_dot or view:
         # `.render()` appends the `format` kwarg to the filename
         # i.e., we need to pass `/my/filepath` to generate `/my/filepath.png`
         # otherwise, passing `/my/filepath.png` will generate `/my/filepath.png.png`
-        graphviz_obj.render(path_without_suffix, format=format, view=view)
+        graphviz_obj.render(path_without_suffix, format=fmt, view=view)
     else:
         # `.pipe()` doesn't append the format to the filename, so we do it explicitly
-        pathlib.Path(f"{path_without_suffix}.{format}").write_bytes(
-            graphviz_obj.pipe(format=format)
-        )
+        pathlib.Path(f"{path_without_suffix}.{fmt}").write_bytes(graphviz_obj.pipe(format=fmt))
 
 
 @dataclasses.dataclass
@@ -163,7 +177,6 @@ class Graph:
             )
         return self._action_tag_map.get(tag)
 
-    @telemetry.capture_function_usage
     def visualize(
         self,
         output_file_path: Optional[Union[str, pathlib.Path]] = None,
@@ -193,7 +206,7 @@ class Graph:
         except ModuleNotFoundError:
             logger.exception(
                 " graphviz is required for visualizing the application graph. Install it with:"
-                '\n\n  pip install "burr[graphviz]" or pip install graphviz \n\n'
+                '\n\n  pip install "apache-burr[graphviz]" or pip install graphviz \n\n'
             )
             return
         digraph_attr = dict(

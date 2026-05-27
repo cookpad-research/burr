@@ -1,3 +1,22 @@
+..
+   Licensed to the Apache Software Foundation (ASF) under one
+   or more contributor license agreements.  See the NOTICE file
+   distributed with this work for additional information
+   regarding copyright ownership.  The ASF licenses this file
+   to you under the Apache License, Version 2.0 (the
+   "License"); you may not use this file except in compliance
+   with the License.  You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing,
+   software distributed under the License is distributed on an
+   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+   KIND, either express or implied.  See the License for the
+   specific language governing permissions and limitations
+   under the License.
+
+
 ============
 Contributing
 ============
@@ -22,6 +41,24 @@ Please:
 #. Ensure all new features have tests
 #. Add documentation for new features
 
+-----------------------
+Issue assignment policy
+-----------------------
+
+Assigning yourself to an issue signals that you are actively working on it.
+This applies equally to maintainers, committers, and external contributors.
+
+- **Only assign yourself** if you have a PR open or are about to start coding.
+- **14 days without visible activity** (PR, commit, or comment): a triager will
+  comment asking for a status update.
+- **21 days total without response**: the assignee is removed and ``help wanted``
+  is added so someone else can pick it up.
+- **Re-assignment is welcome.** If you want to take over, comment on the issue.
+- **Umbrella and tracking issues** marked with ``lifecycle/frozen`` are exempt.
+
+This is enforced by a weekly automated check. If you need more time, just drop a
+comment on the issue to reset the clock.
+
 
 ---------------
 Developer notes
@@ -30,7 +67,7 @@ Developer notes
 CLI
 ---
 
-Burr comes with a `cli` that is both user/developer facing.
+Apache Burr comes with a `cli` that is both user/developer facing.
 
 **this is required in order to publish, do not do so otherwise**
 
