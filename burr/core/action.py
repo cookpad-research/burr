@@ -1,9 +1,27 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 import abc
 import ast
 import builtins
 import copy
 import inspect
 import sys
+import textwrap
 import types
 import typing
 from collections.abc import AsyncIterator
@@ -32,7 +50,124 @@ else:
     from typing import Self
 
 from burr.core.state import State
+
+
+def _validate_declared_reads(fn: Callable, declared_reads: list[str]) -> None:
+    if not declared_reads:
+        return
+
+    try:
+        source = inspect.getsource(fn)
+    except OSError:
+        return  # skip if source unavailable
+
+    # detect actual state parameter name
+    sig = inspect.signature(fn)
+    state_param_name = None
+
+    for name, param in sig.parameters.items():
+        if param.annotation is State:
+            state_param_name = name
+            break
+
+    if state_param_name is None:
+        return
+
+    tree = ast.parse(textwrap.dedent(source))
+
+    declared = set(declared_reads)
+    violations = []
+
+    class Visitor(ast.NodeVisitor):
+        def visit_Subscript(self, node):
+            if (
+                isinstance(node.value, ast.Name)
+                and node.value.id == state_param_name
+                and isinstance(node.slice, ast.Constant)
+                and isinstance(node.slice.value, str)
+            ):
+                key = node.slice.value
+                if key not in declared:
+                    violations.append(key)
+            self.generic_visit(node)
+
+    Visitor().visit(tree)
+
+    if violations:
+        raise ValueError(
+            f"Action reads undeclared state keys: {violations}. "
+            f"Declared reads: {declared_reads}"
+        )
+
+
+from functools import wraps
+
 from burr.core.typing import ActionSchema
+
+
+def type_eraser(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator for ``run``, ``stream_run``, and ``run_and_update`` overrides
+    that declare explicit parameters instead of ``**run_kwargs``.
+
+    Applying this decorator prevents mypy ``[override]`` errors caused by
+    narrowing the base-class signature (which uses ``**run_kwargs``).
+
+    Example usage::
+
+        from burr.core import Action, State, type_eraser
+
+        class Counter(Action):
+            @property
+            def reads(self) -> list[str]:
+                return ["counter"]
+
+            @type_eraser
+            def run(self, state: State, increment_by: int) -> dict:
+                return {"counter": state["counter"] + increment_by}
+
+            @property
+            def writes(self) -> list[str]:
+                return ["counter"]
+
+            def update(self, result: dict, state: State) -> State:
+                return state.update(**result)
+
+            @property
+            def inputs(self) -> list[str]:
+                return ["increment_by"]
+    """
+
+    if inspect.iscoroutinefunction(func):
+
+        @wraps(func)
+        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+            return await func(*args, **kwargs)
+
+        return async_wrapper
+
+    if inspect.isasyncgenfunction(func):
+
+        @wraps(func)
+        async def async_gen_wrapper(*args: Any, **kwargs: Any) -> Any:
+            async for item in func(*args, **kwargs):
+                yield item
+
+        return async_gen_wrapper
+
+    if inspect.isgeneratorfunction(func):
+
+        @wraps(func)
+        def gen_wrapper(*args: Any, **kwargs: Any) -> Any:
+            yield from func(*args, **kwargs)
+
+        return gen_wrapper
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        return func(*args, **kwargs)
+
+    return wrapper
+
 
 # This is here to make accessing the pydantic actions easier
 # we just attach them to action so you can call `@action.pyddantic...`
@@ -108,16 +243,12 @@ class Function(abc.ABC):
         missing_inputs = required_inputs - given_inputs
         additional_inputs = given_inputs - required_inputs - optional_inputs
         if missing_inputs or additional_inputs:
-            raise ValueError(
-                f"Inputs to function {self} are invalid. "
-                + f"Missing the following inputs: {', '.join(missing_inputs)}."
-                if missing_inputs
-                else (
-                    "" f"Additional inputs: {','.join(additional_inputs)}."
-                    if additional_inputs
-                    else ""
-                )
-            )
+            parts = [f"Inputs to function {self} are invalid."]
+            if missing_inputs:
+                parts.append(f"Missing the following inputs: {', '.join(missing_inputs)}.")
+            if additional_inputs:
+                parts.append(f"Additional inputs: {', '.join(additional_inputs)}.")
+            raise ValueError(" ".join(parts))
 
     def is_async(self) -> bool:
         """Convenience method to check if the function is async or not.
@@ -355,26 +486,105 @@ class Condition(Function):
     def reads(self) -> list[str]:
         return self._keys
 
+    _OPERATORS = {
+        "eq": ("==", lambda a, b: a == b),
+        "ne": ("!=", lambda a, b: a != b),
+        "lt": ("<", lambda a, b: a < b),
+        "lte": ("<=", lambda a, b: a <= b),
+        "gt": (">", lambda a, b: a > b),
+        "gte": (">=", lambda a, b: a >= b),
+        "in": ("in", lambda a, b: a in b),
+        "notin": ("not in", lambda a, b: a not in b),
+        "contains": ("contains", lambda a, b: b in a),
+        "is": ("is", lambda a, b: a is b),
+        "isnot": ("is not", lambda a, b: a is not b),
+    }
+
+    @classmethod
+    def _parse_kwarg(cls, kwarg_key: str, value):
+        """Parse a kwarg key into (state_key, operator_symbol, comparison_func, explicit).
+
+        Supports Django-style lookups: ``key__gte=10`` parses as key >= 10.
+        Plain ``key=value`` defaults to equality (implicit).
+
+        Returns a tuple of (state_key, symbol, func, explicit) where explicit
+        indicates whether an operator suffix was present.
+        """
+        for suffix, (symbol, func) in cls._OPERATORS.items():
+            dunder = f"__{suffix}"
+            if kwarg_key.endswith(dunder):
+                state_key = kwarg_key[: -len(dunder)]
+                if not state_key:
+                    raise ValueError(
+                        f"Invalid when() key: '{kwarg_key}' — " f"no state key before '__{suffix}'"
+                    )
+                return state_key, symbol, func, True
+        return kwarg_key, "=", lambda a, b: a == b, False
+
     @classmethod
     def when(cls, **kwargs):
-        """Returns a condition that checks if the given keys are in the
-        state and equal to the given values.
+        """Returns a condition that checks state values using optional operators.
 
         You can also refer to this as ``from burr.core import when`` in the API.
 
-        :param kwargs: Keyword arguments of keys and values to check -- will be an AND condition
-        :return: A condition that checks if the given keys are in the state and equal to the given values
+        Basic equality (unchanged from original)::
+
+            when(foo="bar")            # state["foo"] == "bar"
+            when(foo="bar", baz="qux") # state["foo"] == "bar" AND state["baz"] == "qux"
+
+        Comparison operators via ``__`` suffix::
+
+            when(age__gt=18)           # state["age"] > 18
+            when(age__gte=18)          # state["age"] >= 18
+            when(age__lt=18)           # state["age"] < 18
+            when(age__lte=18)          # state["age"] <= 18
+            when(age__ne=0)            # state["age"] != 0
+            when(age__eq=18)           # state["age"] == 18  (explicit)
+
+        Membership operators::
+
+            when(status__in=["a", "b"])     # state["status"] in ["a", "b"]
+            when(status__notin=["x", "y"])  # state["status"] not in ["x", "y"]
+            when(tags__contains="python")   # "python" in state["tags"]
+
+        Identity operators::
+
+            when(value__is=None)            # state["value"] is None
+            when(value__isnot=None)         # state["value"] is not None
+
+        Multiple conditions are ANDed together::
+
+            when(age__gte=18, status="active")  # age >= 18 AND status == "active"
+
+        :param kwargs: Keyword arguments with optional ``__operator`` suffixes
+        :return: A condition that checks all specified constraints (AND)
         """
-        keys = list(kwargs.keys())
+        parsed = []
+        for kwarg_key, value in kwargs.items():
+            state_key, symbol, func, explicit = cls._parse_kwarg(kwarg_key, value)
+            parsed.append((state_key, symbol, func, value, explicit))
+
+        state_keys = list(dict.fromkeys(p[0] for p in parsed))
 
         def condition_func(state: State) -> bool:
-            for key, value in kwargs.items():
-                if state.get(key) != value:
+            for state_key, _symbol, func, value, _explicit in parsed:
+                if not func(state.get(state_key), value):
                     return False
             return True
 
-        name = f"{', '.join(f'{key}={value}' for key, value in sorted(kwargs.items()))}"
-        return Condition(keys, condition_func, name=name)
+        name_parts = []
+        for state_key, symbol, _func, value, explicit in sorted(parsed, key=lambda p: p[0]):
+            if not explicit:
+                # Backward-compatible format: key=value (no repr, no spaces)
+                name_parts.append(f"{state_key}={value}")
+            elif symbol.isalnum() or " " in symbol:
+                # Word operators like "in", "not in", "contains"
+                name_parts.append(f"{state_key} {symbol} {value!r}")
+            else:
+                # Symbol operators like >=, !=, etc.
+                name_parts.append(f"{state_key}{symbol}{value!r}")
+        name = ", ".join(name_parts)
+        return Condition(state_keys, condition_func, name=name)
 
     def __repr__(self):
         return f"condition: {self._name}"
@@ -611,6 +821,8 @@ class FunctionBasedAction(SingleStepAction):
         self._fn = fn
         self._reads = reads
         self._writes = writes
+        _validate_declared_reads(self._originating_fn, self._reads)
+
         self._bound_params = bound_params if bound_params is not None else {}
         self._inputs = (
             derive_inputs_from_fn(self._bound_params, self._fn)
@@ -1089,9 +1301,12 @@ class FunctionBasedStreamingAction(SingleStepStreamingAction):
         :param writes:
         """
         super(FunctionBasedStreamingAction, self).__init__()
+        self._originating_fn = originating_fn if originating_fn is not None else fn
         self._fn = fn
         self._reads = reads
         self._writes = writes
+        _validate_declared_reads(self._originating_fn, self._reads)
+
         self._bound_params = bound_params if bound_params is not None else {}
         self._inputs = (
             derive_inputs_from_fn(self._bound_params, self._fn)
@@ -1101,7 +1316,7 @@ class FunctionBasedStreamingAction(SingleStepStreamingAction):
                 [item for item in input_spec[1] if item not in self._bound_params],
             )
         )
-        self._originating_fn = originating_fn if originating_fn is not None else fn
+
         self._schema = schema
         self._tags = tags if tags is not None else []
 
@@ -1247,7 +1462,7 @@ class action:
             from burr.integrations.pydantic import pydantic_action
         except ImportError:
             raise ImportError(
-                "Please install pydantic to use the pydantic decorator. pip install burr[pydantic]"
+                "Please install pydantic to use the pydantic decorator. pip install apache-burr[pydantic]"
             )
 
         return pydantic_action(
@@ -1310,7 +1525,7 @@ class streaming_action:
             from burr.integrations.pydantic import pydantic_streaming_action
         except ImportError:
             raise ImportError(
-                "Please install pydantic to use the pydantic decorator. pip install 'burr[pydantic]'"
+                "Please install pydantic to use the pydantic decorator. pip install 'apache-burr[pydantic]'"
             )
 
         return pydantic_streaming_action(
@@ -1330,8 +1545,8 @@ class streaming_action:
         See the following example for how to use this decorator -- this reads ``prompt`` from the state and writes
         ``response`` back out, yielding all intermediate chunks.
 
-        Note that this *must* return a value. If it does not, we will not know how to update the state, and
-        we will error out.
+        Note that this *must* return a final value with a state update. If it does not, we will not know how to update the state, and
+        we will error out. Intermediate yields can be plain dicts (without a state update).
 
         .. code-block:: python
 
@@ -1350,7 +1565,7 @@ class streaming_action:
                     delta = chunk.choices[0].delta.content
                     buffer.append(delta)
                     # yield partial results
-                    yield {'response': delta}, None
+                    yield {'response': delta}
                 full_response = ''.join(buffer)
                 # return the final result
                 return {'response': full_response}, state.update(response=full_response)

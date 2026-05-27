@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 import { ComputerDesktopIcon, UserIcon } from '@heroicons/react/24/outline';
 import { classNames } from '../utils/tailwind';
 import { Button } from '../components/common/button';
@@ -76,8 +95,7 @@ const ChatMessage = (props: { message: ChatItem; id?: string }) => {
               a: ({ ...props }) => <a className="text-dwlightblue hover:underline" {...props} />
             }}
             remarkPlugins={[remarkGfm]}
-            className={`whitespace-pre-wrap break-lines max-w-full ${props.message.type === ChatItem.type.ERROR ? 'bg-dwred/10' : ''} p-0.5`}
-          >
+            className={`whitespace-pre-wrap break-lines max-w-full ${props.message.type === ChatItem.type.ERROR ? 'bg-dwred/10' : ''} p-0.5`}>
             {props.message.content}
           </Markdown>
         ) : (
@@ -161,8 +179,9 @@ export const StreamingChatbot = (props: { projectId: string; appId: string | und
   const submitPrompt = async () => {
     setCurrentResponse(''); // Reset it
     setIsChatWaiting(true);
+    const basePath = window.__BURR_BASE_PATH__ || '';
     const response = await fetch(
-      `/api/v0/streaming_chatbot/response/${props.projectId}/${props.appId}`,
+      `${basePath}/api/v0/streaming_chatbot/response/${props.projectId}/${props.appId}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -273,8 +292,7 @@ export const StreamingChatbot = (props: { projectId: string; appId: string | und
           disabled={isChatWaiting || props.appId === undefined}
           onClick={() => {
             submitPrompt();
-          }}
-        >
+          }}>
           Send
         </Button>
       </div>
@@ -299,7 +317,6 @@ export const StreamingChatbotWithTelemetry = () => {
           }
         />
       }
-      mode={'third'}
-    ></TwoColumnLayout>
+      mode={'third'}></TwoColumnLayout>
   );
 };

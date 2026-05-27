@@ -1,3 +1,22 @@
+..
+   Licensed to the Apache Software Foundation (ASF) under one
+   or more contributor license agreements.  See the NOTICE file
+   distributed with this work for additional information
+   regarding copyright ownership.  The ASF licenses this file
+   to you under the Apache License, Version 2.0 (the
+   "License"); you may not use this file except in compliance
+   with the License.  You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing,
+   software distributed under the License is distributed on an
+   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+   KIND, either express or implied.  See the License for the
+   specific language governing permissions and limitations
+   under the License.
+
+
 .. _simpleexample:
 
 ==============
@@ -25,13 +44,13 @@ So hold tight! This gets you started with the basics but there's a lot more you 
 
     This should take about 10 minutes to complete, and give you a good sense of the library basics.
     You'll need an OpenAI key set as the environment variable ``OPENAI_API_KEY``. If you don't have one you can get one at `OpenAI <https://platform.openai.com>`_.
-    If you don't want to get one, check out the simple example of a `counter application <https://github.com/DAGWorks-Inc/burr/tree/main/examples/hello-world-counter>`_.
+    If you don't want to get one, check out the simple example of a `counter application <https://github.com/apache/burr/tree/main/examples/hello-world-counter>`_.
 
     If you want to skip ahead to the cool stuff (chatbots, ML training, simulations, etc...) feel free to jump into the deep end and start with the :ref:`examples <examples>`.
 
 🤔 If you prefer to learn by video, check out
 `this video walkthrough <https://www.youtube.com/watch?v=rEZ4oDN0GdU>`_
-using `this notebook <https://github.com/DAGWorks-Inc/burr/blob/main/examples/simple-chatbot-intro/notebook.ipynb>`_.
+using `this notebook <https://github.com/apache/burr/blob/main/examples/simple-chatbot-intro/notebook.ipynb>`_.
 
 ----------------------
 Build a Simple Chatbot
@@ -80,7 +99,7 @@ Before we proceed, let's note the following about how we define these actions:
 
 1. State is a dictionary -- actions declare input fields (as strings) and write values to those fields
 2. Actions use a specific *immutable* state object and call operations on it (``.append(...)``, ``.update(...)``)
-3. Functions can do whatever you want -- they can use plain python, or delegate to `langchain <https://langchain.com>`_, `hamilton <https://github.com/dagworks-inc/hamilton>`_, etc... All they have to do is return the new state.
+3. Functions can do whatever you want -- they can use plain python, or delegate to `langchain <https://langchain.com>`_, `hamilton <https://github.com/apache/hamilton>`_, etc... All they have to do is return the new state.
 4. We declare the parameter ``prompt``, meaning that we will expect the user to pass ``prompt`` every time they run the graph.
 
 .. note::
@@ -203,4 +222,4 @@ Now that we've built a basic application, we can do the following with only a fe
 2. :ref:`Persist state to a database + reload <state-persistence>` -- add a ``initialize_from`` line to the builder and select a pre-existing/implement a custom persistence method.
 3. :ref:`Add monitoring to track application data <tracking>` -- leverage ``with_tracker`` to track to the Burr UI and visualize your application live.
 4. :ref:`Stream results back <streaming>` -- minimize time to first token by streaming results back to the user.
-5. `Generate test cases from prior runs <https://github.com/DAGWorks-Inc/burr/tree/main/examples/test-case-creation>`_ -- use the ``burr-testburr-test-case create`` command to automatically generate test cases for your LLM app.
+5. `Generate test cases from prior runs <https://github.com/apache/burr/tree/main/examples/test-case-creation>`_ -- use the ``burr-testburr-test-case create`` command to automatically generate test cases for your LLM app.

@@ -1,3 +1,20 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 import json
 import uuid
 from typing import Tuple
@@ -49,7 +66,7 @@ def schema_to_prompt(schema):
     return prompt
 
 
-def set_inital_chat_history(schema_prompt: str) -> list[dict]:
+def set_initial_chat_history(schema_prompt: str) -> list[dict]:
     SYSTEM_MESSAGE = "You are a Cypher expert with access to a directed knowledge graph\n"
     SYSTEM_MESSAGE += schema_prompt
     SYSTEM_MESSAGE += (
@@ -128,7 +145,7 @@ def AI_create_cypher_query(state: State, client: openai.Client) -> tuple[dict, S
     messages = state["chat_history"]
     # Call the function
     response = client.chat.completions.create(
-        model="gpt-4-turbo-preview",
+        model="gpt-4o-mini",
         messages=messages,
         tools=[run_cypher_query_tool_description],
         tool_choice="auto",
@@ -176,7 +193,7 @@ def AI_generate_response(state: State, client: openai.Client) -> tuple[dict, Sta
     """AI step to generate the response."""
     messages = state["chat_history"]
     response = client.chat.completions.create(
-        model="gpt-4-turbo-preview",
+        model="gpt-4o-mini",
         messages=messages,
     )  # get a new response from the model where it can see the function response
     response_message = response.choices[0].message
@@ -195,7 +212,7 @@ def build_application(
     # create a prompt from it
     schema_prompt = schema_to_prompt(schema)
     # set the initial chat history
-    base_messages = set_inital_chat_history(schema_prompt)
+    base_messages = set_initial_chat_history(schema_prompt)
 
     tracker = LocalTrackingClient("ufc-falkor")
     # create graph
