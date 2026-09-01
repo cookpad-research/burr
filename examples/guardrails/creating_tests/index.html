@@ -1,39 +1,28 @@
-<!--
-     Licensed to the Apache Software Foundation (ASF) under one
-     or more contributor license agreements.  See the NOTICE file
-     distributed with this work for additional information
-     regarding copyright ownership.  The ASF licenses this file
-     to you under the Apache License, Version 2.0 (the
-     "License"); you may not use this file except in compliance
-     with the License.  You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-     Unless required by applicable law or agreed to in writing,
-     software distributed under the License is distributed on an
-     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-     KIND, either express or implied.  See the License for the
-     specific language governing permissions and limitations
-     under the License.
--->
-
 <!doctype html>
 <html class="no-js" lang="en" data-content_root="../../../">
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../../genindex/"><link rel="search" title="Search" href="../../../search/"><link rel="next" title="🧪 Data science" href="../../data-science/"><link rel="prev" title="🚧 Guardrails / Tests" href="../">
-        <link rel="canonical" href="https://burr.apache.org/docs/examples/guardrails/creating_tests/">
-        <link rel="prefetch" href="../../../_static/burr_logo.svg" as="image">
 
-    <link rel="shortcut icon" href="../../../_static/favicon.ico"><!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>Creating Test Cases - Apache Burr</title>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-20Z3J1CR22"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-20Z3J1CR22');
+    </script>
+    <link rel="index" title="Index" href="../../../genindex/"><link rel="search" title="Search" href="../../../search/"><link rel="next" title="🧪 Data science" href="../../data-science/"><link rel="prev" title="🚧 Guardrails / Tests" href="../">
+        <link rel="canonical" href="https://burr.dagworks.io/examples/guardrails/creating_tests/">
+
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"><!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Creating Test Cases - Burr</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=238f852d" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/testimonials.css?v=cc24216e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=739e8c58" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/testimonials.css?v=bd684830" />
     
     
 
@@ -64,34 +53,7 @@
       }
     }
   }
-</style>
-
-<!-- Matomo -->
-<script>
-  var _paq = window._paq = window._paq || [];
-  /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
-  _paq.push(["setDoNotTrack", true]);
-  _paq.push(["disableCookies"]);
-  _paq.push(['trackPageView']);
-  _paq.push(['enableLinkTracking']);
-  (function() {
-    var u="https://analytics.apache.org/";
-    _paq.push(['setTrackerUrl', u+'matomo.php']);
-    _paq.push(['setSiteId', '86']);
-    var d=document, g=d.createElement('script'),
-s=d.getElementsByTagName('script')[0];
-    g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
-  })();
-</script>
-<!-- End Matomo Code -->
-<!-- Point sidebar brand link to landing page -->
-<script>
-  document.addEventListener("DOMContentLoaded", function() {
-    var brand = document.querySelector(".sidebar-brand");
-    if (brand) brand.href = "/";
-  });
-</script>
-</head>
+</style></head>
   <body>
     
     <script>
@@ -218,7 +180,7 @@ s=d.getElementsByTagName('script')[0];
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../"><div class="brand">Apache Burr</div></a>
+      <a href="../../../"><div class="brand">Burr</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -238,11 +200,8 @@ s=d.getElementsByTagName('script')[0];
     <div class="sidebar-container">
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../">
-  <div class="sidebar-logo-container">
-    <img class="sidebar-logo" src="../../../_static/burr_logo.svg" alt="Logo"/>
-  </div>
   
-  <span class="sidebar-brand-text">Apache Burr</span>
+  <span class="sidebar-brand-text">Burr</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search/" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -250,7 +209,7 @@ s=d.getElementsByTagName('script')[0];
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Apache Burr</span></p>
+  <p class="caption" role="heading"><span class="caption-text">Burr</span></p>
 <ul class="current">
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../getting_started/">Get started</a><input aria-label="Toggle navigation of Get started" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../getting_started/why-burr/">Why Burr?</a></li>
@@ -259,58 +218,49 @@ s=d.getElementsByTagName('script')[0];
 <li class="toctree-l2"><a class="reference internal" href="../../../getting_started/up-next/">Next Steps</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../../ui/">Burr UI</a><input aria-label="Toggle navigation of Burr UI" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../ui/getting-started/">Getting Started</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../ui/notebook/">Notebook / Colab</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../ui/deployment/">Deployment</a></li>
-</ul>
-</li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="../../">Cookbook</a><input aria-label="Toggle navigation of Cookbook" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../simple/">🧸 Toy examples</a><input aria-label="Toggle navigation of 🧸 Toy examples" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../../">Cookbook</a><input aria-label="Toggle navigation of Cookbook" checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../simple/">🧸 Toy examples</a><input aria-label="Toggle navigation of 🧸 Toy examples" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../simple/counter/">Counter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../simple/cowsay/">Cowsay</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../simple/choose-your-own-adventure/">Choose your own adventure</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../chatbots/">📞 Chatbots</a><input aria-label="Toggle navigation of 📞 Chatbots" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../chatbots/">📞 Chatbots</a><input aria-label="Toggle navigation of 📞 Chatbots" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../chatbots/basic-chatbot/">Basic</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../chatbots/gpt-like-chatbot/">GPT-like multimodal chatbot</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../chatbots/rag-chatbot-hamilton/">Conversational RAG with Burr and Hamilton</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../agents/">🤖 Agents</a><input aria-label="Toggle navigation of 🤖 Agents" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../agents/">🤖 Agents</a><input aria-label="Toggle navigation of 🤖 Agents" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../agents/divide-and-conquer/">Divide and Conquer</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../agents/agent-patterns/">Agent patterns</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../deployment/">Deployment</a><input aria-label="Toggle navigation of Deployment" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../deployment/">✈ Deployment</a><input aria-label="Toggle navigation of ✈ Deployment" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../deployment/web-server/">Burr in a web server</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../deployment/infrastructure/">Provisioning Infrastructure/Deploying</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../deployment/monitoring/">Monitoring in Production</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../deployment/aws/">AWS Deployment Example</a></li>
 </ul>
 </li>
-<li class="toctree-l2 current has-children"><a class="reference internal" href="../">🚧 Guardrails / Tests</a><input aria-label="Toggle navigation of 🚧 Guardrails / Tests" checked="" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="../">🚧 Guardrails / Tests</a><input aria-label="Toggle navigation of 🚧 Guardrails / Tests" checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l3 current current-page"><a class="current reference internal" href="#">Creating Test Cases</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../data-science/">🧪 Data science</a><input aria-label="Toggle navigation of 🧪 Data science" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../data-science/">🧪 Data science</a><input aria-label="Toggle navigation of 🧪 Data science" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../data-science/ml_training/">Hyperparameter tuning</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../data-science/simulation/">Simulations</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../../concepts/">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../concepts/">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/overview/">Cheat Sheet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/sdlc/">SDLC with LLMs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/actions/">Actions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/state/">State</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/state-machine/">Applications</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../concepts/human-in-the-loop/">Human in the Loop</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/transitions/">Transitions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/tracking/">Tracking Burr</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../concepts/s3-tracking-aws/">S3 Tracking on AWS (Concepts)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/state-persistence/">State Persistence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/serde/">Serialization / Deserialization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/streaming-actions/">Streaming Actions</a></li>
@@ -323,7 +273,7 @@ s=d.getElementsByTagName('script')[0];
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/planned-capabilities/">Planned Capabilities</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../../reference/">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../reference/">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../reference/application/">Applications</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../reference/application/#graph-apis">Graph APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../reference/actions/">Actions</a></li>
@@ -336,50 +286,38 @@ s=d.getElementsByTagName('script')[0];
 <li class="toctree-l2"><a class="reference internal" href="../../../reference/lifecycle/">Lifecycle API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../reference/parallelism/">Parallelism</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../reference/typing/">Typing</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../../reference/integrations/">Integrations</a><input aria-label="Toggle navigation of Integrations" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../reference/integrations/">Integrations</a><input aria-label="Toggle navigation of Integrations" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/hamilton/">Hamilton</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/streamlit/">Streamlit</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/opentelemetry/">OpenTelemetry</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/traceloop/">Traceloop</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/langfuse/">Langfuse</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/langchain/">Langchain</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/pydantic/">Pydantic</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/haystack/">Haystack</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/ray/">Ray</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/bedrock/">Amazon Bedrock</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../../../reference/telemetry/">Usage analytics + data privacy</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../../contributing/">Contributing</a><input aria-label="Toggle navigation of Contributing" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../contributing/">Contributing</a><input aria-label="Toggle navigation of Contributing" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../contributing/setup/">Setup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../contributing/iterating/">Developing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../contributing/architecture/">Architecture</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../contributing/contributing/">Contributing</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../../../ecosystem/">Ecosystem</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">ASF</span></p>
+<p class="caption" role="heading"><span class="caption-text">Burr Cloud</span></p>
 <ul>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../../asf/">ASF</a><input aria-label="Toggle navigation of ASF" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference external" href="https://www.apache.org/">Apache Software Foundation</a></li>
-<li class="toctree-l2"><a class="reference external" href="https://www.apache.org/licenses/">License</a></li>
-<li class="toctree-l2"><a class="reference external" href="https://www.apache.org/events/current-event.html">Events</a></li>
-<li class="toctree-l2"><a class="reference external" href="https://privacy.apache.org/policies/privacy-policy-public.html">Privacy</a></li>
-<li class="toctree-l2"><a class="reference external" href="https://www.apache.org/security/">Security</a></li>
-<li class="toctree-l2"><a class="reference external" href="https://www.apache.org/foundation/sponsorship.html">Sponsorship</a></li>
-<li class="toctree-l2"><a class="reference external" href="https://www.apache.org/foundation/thanks.html">Thanks</a></li>
-<li class="toctree-l2"><a class="reference external" href="https://www.apache.org/foundation/policies/conduct.html">Code of Conduct</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference external" href="https://forms.gle/w9u2QKcPrztApRedA">Waitist</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">RESOURCES</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference external" href="https://blog.dagworks.io/">Blog</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://discord.gg/6Zy2DwP4f3">Discord community server</a></li>
-<li class="toctree-l1"><a class="reference external" href="https://github.com/apache/burr">GitHub</a></li>
-<li class="toctree-l1"><a class="reference external" href="https://twitter.com/burr_framework">Twitter</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/dagworks-inc/burr">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://twitter.com/dagworks">Twitter</a></li>
 </ul>
 
 </div>
@@ -399,7 +337,17 @@ s=d.getElementsByTagName('script')[0];
           <span>Back to top</span>
         </a>
         <div class="content-icon-container">
-          <div class="theme-toggle-container theme-toggle-content">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/dagworks-inc/burr/blob/main/docs/examples/guardrails/creating_tests.rst?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/dagworks-inc/burr/edit/main/docs/examples/guardrails/creating_tests.rst" rel="edit" title="Edit this page">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
             <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
               <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
               <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
@@ -426,15 +374,15 @@ do this, but in any case, you’ll need to write a test case to exercise things,
 is what we’re showing you how to do here.</p>
 <section id="need-to-know-more-about-pytest">
 <h2>Need to know more about pytest?<a class="headerlink" href="#need-to-know-more-about-pytest" title="Link to this heading">¶</a></h2>
-<p>For a more pytest walkthrough and example, see the <a class="reference external" href="https://github.com/apache/burr/tree/main/examples/pytest">pytest example</a>,
+<p>For a more pytest walkthrough and example, see the <a class="reference external" href="https://github.com/DAGWorks-Inc/burr/tree/main/examples/pytest">pytest example</a>,
 that explains what pytest is, how to evaluate more than just a single assert statement, how to aggregate results, etc.</p>
 </section>
 <section id="test-case-creation-example">
 <h2>Test Case Creation Example<a class="headerlink" href="#test-case-creation-example" title="Link to this heading">¶</a></h2>
 <p>Video walkthrough:</p>
-<a class="reference external image-reference" href="https://www.youtube.com/watch?v=9U_CMsh0VBI"><img alt="Creating Tests Video" class="align-center" src="../../../_images/video_9U_CMsh0VBI_thumbnail.jpg" style="width: 600px;" />
-</a>
-<p>Steps:</p>
+<div>
+  <iframe width="800" height="455" src="https://www.youtube.com/embed/9U_CMsh0VBI?si=Z-powULn_RO2-2pB" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+</div><p>Steps:</p>
 <ol class="arabic">
 <li><p>You have built some part of your Burr application.</p></li>
 <li><p>You have found some state you want to test / iterate on.</p></li>
@@ -455,7 +403,7 @@ See orange lines indicating what to pull from the UI in the image below.</p>
 <span class="w">  </span>--target-file-name<span class="w"> </span>/tmp/test-case.json
 </pre></div>
 </div>
-<p>See <a class="reference external" href="https://github.com/apache/burr/tree/main/examples/test-case-creation">github repository example</a>
+<p>See <a class="reference external" href="https://github.com/DAGWorks-Inc/burr/tree/main/examples/test-case-creation">github repository example</a>
 for an example.</p>
 <p>Note (1): if you have custom serialization/deserialization logic, you will want to pass in <cite>–serde-module</cite> to the
 test case with the module name of your serialization logic.</p>
@@ -502,7 +450,7 @@ to use the output of one action as the input to another action; there are corner
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; The Apache Software Foundation, Licensed under the Apache License, Version 2.0.
+                Copyright &#169; 2024, Elijah ben Izzy, Stefan Krawczyk
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             
@@ -510,20 +458,7 @@ to use the output of one action as the input to another action; there are corner
             
           </div>
           <div class="right-details">
-            <div class="icons">
-              <a class="muted-link " href="https://incubator.apache.org/" aria-label="Apache Stuff">
-<div class="apache-footer">
-    <img width="200" src="/_static/apache-incubator-logo.svg" alt="Apache Incubator Logo" class="apache-incubator-logo">
-    <div class="apache-notice">
-        <p>Apache Burr is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.</p>
-    </div>
-    <div class="apache-copyright">
-        <p>Apache, the names of Apache projects, and the feather logo are either registered trademarks or trademarks of the Apache Software Foundation in the United States and/or other countries.</p>
-    </div>
-</div>
-</a>
-              
-            </div>
+            
           </div>
         </div>
         
@@ -557,8 +492,8 @@ to use the output of one action as the input to another action; there are corner
     </aside>
   </div>
 </div><script src="../../../_static/documentation_options.js?v=187304be"></script>
-    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
     </body>
 </html>

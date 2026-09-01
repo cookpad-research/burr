@@ -1,22 +1,3 @@
-..
-   Licensed to the Apache Software Foundation (ASF) under one
-   or more contributor license agreements.  See the NOTICE file
-   distributed with this work for additional information
-   regarding copyright ownership.  The ASF licenses this file
-   to you under the Apache License, Version 2.0 (the
-   "License"); you may not use this file except in compliance
-   with the License.  You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing,
-   software distributed under the License is distributed on an
-   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-   KIND, either express or implied.  See the License for the
-   specific language governing permissions and limitations
-   under the License.
-
-
 ====================
 Applications
 ====================
@@ -75,8 +56,7 @@ If you're in an async context, you can run `astep` instead:
 
 Step can also take in ``inputs`` as a dictionary, which will be passed to the action's run function as keyword arguments.
 This is specifically meant for a "human in the loop" scenario, where the action needs to ask for input from a user. In this case,
-the control flow is meant to be interrupted to allow for the user to provide input. See :ref:`inputs <inputref>` and
-:ref:`human in the loop <human-in-the-loop>` for more information.
+the control flow is meant to be interrupted to allow for the user to provide input. See :ref:`inputs <inputref>` for more information.
 
 .. code-block:: python
 
@@ -172,7 +152,7 @@ in a web-server (create a graph once, application many times), import the graph 
 
 .. code-block:: python
 
-    from burr.core import ApplicationBuilder, GraphBuilder
+    from burr.core import ApplicationBuilder, default, expr
     graph = (
         GraphBuilder()
         .with_actions(human_input, ai_response)
@@ -184,7 +164,7 @@ in a web-server (create a graph once, application many times), import the graph 
     app = (
         ApplicationBuilder()
         .with_graph(graph)
-        .with_state(chat_history=[])
+        with_state(chat_history=[])
         .with_entrypoint("human_input")
         .build()
     )
