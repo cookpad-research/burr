@@ -1,3 +1,22 @@
+..
+   Licensed to the Apache Software Foundation (ASF) under one
+   or more contributor license agreements.  See the NOTICE file
+   distributed with this work for additional information
+   regarding copyright ownership.  The ASF licenses this file
+   to you under the Apache License, Version 2.0 (the
+   "License"); you may not use this file except in compliance
+   with the License.  You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing,
+   software distributed under the License is distributed on an
+   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+   KIND, either express or implied.  See the License for the
+   specific language governing permissions and limitations
+   under the License.
+
+
 ====================
 Creating Test Cases
 ====================
@@ -16,7 +35,7 @@ is what we're showing you how to do here.
 
 Need to know more about pytest?
 -------------------------------
-For a more pytest walkthrough and example, see the `pytest example <https://github.com/DAGWorks-Inc/burr/tree/main/examples/pytest>`_,
+For a more pytest walkthrough and example, see the `pytest example <https://github.com/apache/burr/tree/main/examples/pytest>`_,
 that explains what pytest is, how to evaluate more than just a single assert statement, how to aggregate results, etc.
 
 
@@ -24,11 +43,11 @@ Test Case Creation Example
 --------------------------
 Video walkthrough:
 
-.. raw:: html
-
-    <div>
-      <iframe width="800" height="455" src="https://www.youtube.com/embed/9U_CMsh0VBI?si=Z-powULn_RO2-2pB" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-    </div>
+.. image:: /_static/video_9U_CMsh0VBI_thumbnail.jpg
+   :target: https://www.youtube.com/watch?v=9U_CMsh0VBI
+   :alt: Creating Tests Video
+   :align: center
+   :width: 600px
 
 
 Steps:
@@ -54,7 +73,7 @@ Steps:
       --sequence-id 0 \
       --target-file-name /tmp/test-case.json
 
-See `github repository example <https://github.com/DAGWorks-Inc/burr/tree/main/examples/test-case-creation>`_
+See `github repository example <https://github.com/apache/burr/tree/main/examples/test-case-creation>`_
 for an example.
 
 Note (1): if you have custom serialization/deserialization logic, you will want to pass in `--serde-module` to the

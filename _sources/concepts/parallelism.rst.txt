@@ -1,8 +1,27 @@
+..
+   Licensed to the Apache Software Foundation (ASF) under one
+   or more contributor license agreements.  See the NOTICE file
+   distributed with this work for additional information
+   regarding copyright ownership.  The ASF licenses this file
+   to you under the Apache License, Version 2.0 (the
+   "License"); you may not use this file except in compliance
+   with the License.  You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing,
+   software distributed under the License is distributed on an
+   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+   KIND, either express or implied.  See the License for the
+   specific language governing permissions and limitations
+   under the License.
+
+
 .. _parallelism:
 
-===========
+=================
 Parallelism
-===========
+=================
 
 Burr can run multiple actions in parallel. Each parallel branch can contain one or more actions, and different branches can have different actions. This is useful when:
 
@@ -33,7 +52,6 @@ With the low-level API, you can manually determine how parallel actions or subgr
 
 Overview
 ========
-
 Burr allows you to define parallel actions by expanding a single action into multiple individual actions or subgraphs which
 will execute them all and joining the results. This is a simple `map-reduce <https://en.wikipedia.org/wiki/MapReduce>`_ pattern.
 
@@ -130,7 +148,6 @@ Then, to run the application:
 
 Run different actions over the same state
 -----------------------------------------
-
 
 For case (2) (mapping actions over the same state) you implement the ``MapActions`` class, doing the following:
 
@@ -602,7 +619,7 @@ The basics (code not present now):
 
 
 Inter-action communication
---------------------------
+---------------------------
 
 Say you have two LLMs answering the same question -- one that gives immediate results back to the user
 as they come in, and another that thinks for a while to give more sophisticated results. The user then has the option to say they're happy
@@ -619,12 +636,12 @@ To do this, you would:
 
 
 Async Parallelism
-================
+==================
 
 Burr also supports asynchronous parallelism. When working in an async context, you need to make a few adjustments to your parallel actions:
 
 1. Make your methods async
---------------------------
+---------------------------
 
 The `action`, `states`, `reduce`, and other methods should be defined as async:
 
@@ -657,7 +674,7 @@ The `action`, `states`, `reduce`, and other methods should be defined as async:
             return state.update(ensemble_responses=all_responses)
 
 2. Implement the is_async method
--------------------------------
+--------------------------------
 
 You must override the `is_async` method to return `True`:
 
@@ -672,7 +689,7 @@ You must override the `is_async` method to return `True`:
         # ... other methods ...
 
 3. Use async persisters with connection pools
---------------------------------------------
+----------------------------------------------
 
 When using state persistence with async parallelism, make sure to use the async version of persisters and initialize them with a connection pool:
 
@@ -681,7 +698,7 @@ When using state persistence with async parallelism, make sure to use the async 
     from burr.integrations.persisters.b_asyncpg import AsyncPGPersister
 
     # Create an async persister with a connection pool
-    persister = AsyncPGPersister.from_values(
+    persister = await AsyncPGPersister.from_values(
         host="localhost",
         port=5432,
         user="postgres",
@@ -690,7 +707,7 @@ When using state persistence with async parallelism, make sure to use the async 
         use_pool=True  # Important for parallelism!
     )
 
-    app = (
+    app = await (
         ApplicationBuilder()
         .with_state_persister(persister)
         .with_action(
@@ -705,12 +722,12 @@ Remember to properly clean up your async persisters when you're done with them:
 
 .. code-block:: python
 
-    # Using as a context manager
+    # Using as a context manager (recommended)
     async with AsyncPGPersister.from_values(..., use_pool=True) as persister:
         # Use persister here
 
     # Or manual cleanup
-    persister = AsyncPGPersister.from_values(..., use_pool=True)
+    persister = await AsyncPGPersister.from_values(..., use_pool=True)
     try:
         # Use persister here
     finally:

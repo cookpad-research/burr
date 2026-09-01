@@ -1,28 +1,39 @@
+<!--
+     Licensed to the Apache Software Foundation (ASF) under one
+     or more contributor license agreements.  See the NOTICE file
+     distributed with this work for additional information
+     regarding copyright ownership.  The ASF licenses this file
+     to you under the Apache License, Version 2.0 (the
+     "License"); you may not use this file except in compliance
+     with the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing,
+     software distributed under the License is distributed on an
+     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+     KIND, either express or implied.  See the License for the
+     specific language governing permissions and limitations
+     under the License.
+-->
+
 <!doctype html>
 <html class="no-js" lang="en" data-content_root="../../../">
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../../../genindex/"><link rel="search" title="Search" href="../../../search/"><link rel="next" title="Simulations" href="../simulation/"><link rel="prev" title="🧪 Data science" href="../">
+        <link rel="canonical" href="https://burr.apache.org/docs/examples/data-science/ml_training/">
+        <link rel="prefetch" href="../../../_static/burr_logo.svg" as="image">
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-20Z3J1CR22"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-20Z3J1CR22');
-    </script>
-    <link rel="index" title="Index" href="../../../genindex/"><link rel="search" title="Search" href="../../../search/"><link rel="next" title="Simulations" href="../simulation/"><link rel="prev" title="🧪 Data science" href="../">
-        <link rel="canonical" href="https://burr.dagworks.io/examples/data-science/ml_training/">
-
-    <link rel="shortcut icon" href="../../../_static/favicon.ico"><!-- Generated with Sphinx 8.2.3 and Furo 2025.09.25 -->
-        <title>Hyperparameter tuning - Burr</title>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"><!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
+        <title>Hyperparameter tuning - Apache Burr</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=580074bf" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.8ecb98da25f57f5357bf6f572d296f466b2cfe2517ffebfabe82451661e28f02.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=739e8c58" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/testimonials.css?v=bd684830" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=238f852d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/testimonials.css?v=cc24216e" />
     
     
 
@@ -53,7 +64,34 @@
       }
     }
   }
-</style></head>
+</style>
+
+<!-- Matomo -->
+<script>
+  var _paq = window._paq = window._paq || [];
+  /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+  _paq.push(["setDoNotTrack", true]);
+  _paq.push(["disableCookies"]);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u="https://analytics.apache.org/";
+    _paq.push(['setTrackerUrl', u+'matomo.php']);
+    _paq.push(['setSiteId', '86']);
+    var d=document, g=d.createElement('script'),
+s=d.getElementsByTagName('script')[0];
+    g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+  })();
+</script>
+<!-- End Matomo Code -->
+<!-- Point sidebar brand link to landing page -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var brand = document.querySelector(".sidebar-brand");
+    if (brand) brand.href = "/";
+  });
+</script>
+</head>
   <body>
     
     <script>
@@ -180,7 +218,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../"><div class="brand">Burr</div></a>
+      <a href="../../../"><div class="brand">Apache Burr</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -200,8 +238,11 @@
     <div class="sidebar-container">
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../">
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo" src="../../../_static/burr_logo.svg" alt="Logo"/>
+  </div>
   
-  <span class="sidebar-brand-text">Burr</span>
+  <span class="sidebar-brand-text">Apache Burr</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search/" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -209,7 +250,7 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Burr</span></p>
+  <p class="caption" role="heading"><span class="caption-text">Apache Burr</span></p>
 <ul class="current">
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../getting_started/">Get started</a><input aria-label="Toggle navigation of Get started" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../getting_started/why-burr/">Why Burr?</a></li>
@@ -218,49 +259,58 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../getting_started/up-next/">Next Steps</a></li>
 </ul>
 </li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="../../">Cookbook</a><input aria-label="Toggle navigation of Cookbook" checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../simple/">🧸 Toy examples</a><input aria-label="Toggle navigation of 🧸 Toy examples" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../ui/">Burr UI</a><input aria-label="Toggle navigation of Burr UI" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../ui/getting-started/">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../ui/notebook/">Notebook / Colab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../ui/deployment/">Deployment</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../../">Cookbook</a><input aria-label="Toggle navigation of Cookbook" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../simple/">🧸 Toy examples</a><input aria-label="Toggle navigation of 🧸 Toy examples" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../simple/counter/">Counter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../simple/cowsay/">Cowsay</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../simple/choose-your-own-adventure/">Choose your own adventure</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../chatbots/">📞 Chatbots</a><input aria-label="Toggle navigation of 📞 Chatbots" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../chatbots/">📞 Chatbots</a><input aria-label="Toggle navigation of 📞 Chatbots" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../chatbots/basic-chatbot/">Basic</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../chatbots/gpt-like-chatbot/">GPT-like multimodal chatbot</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../chatbots/rag-chatbot-hamilton/">Conversational RAG with Burr and Hamilton</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../agents/">🤖 Agents</a><input aria-label="Toggle navigation of 🤖 Agents" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../agents/">🤖 Agents</a><input aria-label="Toggle navigation of 🤖 Agents" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../agents/divide-and-conquer/">Divide and Conquer</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../agents/agent-patterns/">Agent patterns</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../deployment/">✈ Deployment</a><input aria-label="Toggle navigation of ✈ Deployment" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../deployment/">Deployment</a><input aria-label="Toggle navigation of Deployment" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../deployment/web-server/">Burr in a web server</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../deployment/infrastructure/">Provisioning Infrastructure/Deploying</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../deployment/monitoring/">Monitoring in Production</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../deployment/aws/">AWS Deployment Example</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../guardrails/">🚧 Guardrails / Tests</a><input aria-label="Toggle navigation of 🚧 Guardrails / Tests" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../guardrails/">🚧 Guardrails / Tests</a><input aria-label="Toggle navigation of 🚧 Guardrails / Tests" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../guardrails/creating_tests/">Creating Test Cases</a></li>
 </ul>
 </li>
-<li class="toctree-l2 current has-children"><a class="reference internal" href="../">🧪 Data science</a><input aria-label="Toggle navigation of 🧪 Data science" checked="" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="../">🧪 Data science</a><input aria-label="Toggle navigation of 🧪 Data science" checked="" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l3 current current-page"><a class="current reference internal" href="#">Hyperparameter tuning</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../simulation/">Simulations</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../../concepts/">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../concepts/">Concepts</a><input aria-label="Toggle navigation of Concepts" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/overview/">Cheat Sheet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/sdlc/">SDLC with LLMs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/actions/">Actions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/state/">State</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/state-machine/">Applications</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../concepts/human-in-the-loop/">Human in the Loop</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/transitions/">Transitions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/tracking/">Tracking Burr</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../concepts/s3-tracking-aws/">S3 Tracking on AWS (Concepts)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/state-persistence/">State Persistence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/serde/">Serialization / Deserialization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/streaming-actions/">Streaming Actions</a></li>
@@ -273,7 +323,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../concepts/planned-capabilities/">Planned Capabilities</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../../reference/">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../reference/">API reference</a><input aria-label="Toggle navigation of API reference" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../reference/application/">Applications</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../reference/application/#graph-apis">Graph APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../reference/actions/">Actions</a></li>
@@ -286,38 +336,50 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../reference/lifecycle/">Lifecycle API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../reference/parallelism/">Parallelism</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../reference/typing/">Typing</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../../reference/integrations/">Integrations</a><input aria-label="Toggle navigation of Integrations" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../reference/integrations/">Integrations</a><input aria-label="Toggle navigation of Integrations" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/hamilton/">Hamilton</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/streamlit/">Streamlit</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/opentelemetry/">OpenTelemetry</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/traceloop/">Traceloop</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/langfuse/">Langfuse</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/langchain/">Langchain</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/pydantic/">Pydantic</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/haystack/">Haystack</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/ray/">Ray</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../reference/integrations/bedrock/">Amazon Bedrock</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../../reference/telemetry/">Usage analytics + data privacy</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../../contributing/">Contributing</a><input aria-label="Toggle navigation of Contributing" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../contributing/">Contributing</a><input aria-label="Toggle navigation of Contributing" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../contributing/setup/">Setup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../contributing/iterating/">Developing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../contributing/architecture/">Architecture</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../contributing/contributing/">Contributing</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ecosystem/">Ecosystem</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Burr Cloud</span></p>
+<p class="caption" role="heading"><span class="caption-text">ASF</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference external" href="https://forms.gle/w9u2QKcPrztApRedA">Waitist</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../asf/">ASF</a><input aria-label="Toggle navigation of ASF" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference external" href="https://www.apache.org/">Apache Software Foundation</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://www.apache.org/licenses/">License</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://www.apache.org/events/current-event.html">Events</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://privacy.apache.org/policies/privacy-policy-public.html">Privacy</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://www.apache.org/security/">Security</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://www.apache.org/foundation/sponsorship.html">Sponsorship</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://www.apache.org/foundation/thanks.html">Thanks</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://www.apache.org/foundation/policies/conduct.html">Code of Conduct</a></li>
+</ul>
+</li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">RESOURCES</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference external" href="https://blog.dagworks.io/">Blog</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://discord.gg/6Zy2DwP4f3">Discord community server</a></li>
-<li class="toctree-l1"><a class="reference external" href="https://github.com/dagworks-inc/burr">GitHub</a></li>
-<li class="toctree-l1"><a class="reference external" href="https://twitter.com/dagworks">Twitter</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/apache/burr">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://twitter.com/burr_framework">Twitter</a></li>
 </ul>
 
 </div>
@@ -337,17 +399,7 @@
           <span>Back to top</span>
         </a>
         <div class="content-icon-container">
-          <div class="view-this-page">
-  <a class="muted-link" href="https://github.com/dagworks-inc/burr/blob/main/docs/examples/data-science/ml_training.md?plain=true" title="View this page">
-    <svg><use href="#svg-eye"></use></svg>
-    <span class="visually-hidden">View this page</span>
-  </a>
-</div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/dagworks-inc/burr/edit/main/docs/examples/data-science/ml_training.md" rel="edit" title="Edit this page">
-    <svg><use href="#svg-pencil"></use></svg>
-    <span class="visually-hidden">Edit this page</span>
-  </a>
-</div><div class="theme-toggle-container theme-toggle-content">
+          <div class="theme-toggle-container theme-toggle-content">
             <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
               <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
               <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
@@ -360,13 +412,31 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="hyperparameter-tuning">
+          <!--
+     Licensed to the Apache Software Foundation (ASF) under one
+     or more contributor license agreements.  See the NOTICE file
+     distributed with this work for additional information
+     regarding copyright ownership.  The ASF licenses this file
+     to you under the Apache License, Version 2.0 (the
+     "License"); you may not use this file except in compliance
+     with the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing,
+     software distributed under the License is distributed on an
+     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+     KIND, either express or implied.  See the License for the
+     specific language governing permissions and limitations
+     under the License.
+-->
+<section id="hyperparameter-tuning">
 <h1>Hyperparameter tuning<a class="headerlink" href="#hyperparameter-tuning" title="Link to this heading">¶</a></h1>
 <p>Hyperparameter tuning is a key part of training machine learning models. For use-cases ranging from grid-search
 to gaussian processes, <code class="docutils literal notranslate"><span class="pre">burr</span></code> is a simple way to implement robust, failure-resistant hyperparameter optimization. This involves keeping
 track of hyperparameters and metrics and feeding these into a decision function to determine where to look next.
 <code class="docutils literal notranslate"><span class="pre">burr</span></code>’s state machine can help you write and manage that process.</p>
-<p>This is a WIP! Please see the placeholder/example sketch in the <a class="reference external" href="https://github.com/DAGWorks-Inc/burr/tree/main/examples/ml-training">repository</a> and contribute back if you have ideas via associated issue <a class="reference external" href="https://github.com/DAGWorks-Inc/burr/issues/138">here</a>.</p>
+<p>This is a WIP! Please see the placeholder/example sketch in the <a class="reference external" href="https://github.com/apache/burr/tree/main/examples/ml-training">repository</a> and contribute back if you have ideas via associated issue <a class="reference external" href="https://github.com/apache/burr/issues/138">here</a>.</p>
 <section id="high-level-view">
 <h2>High-level view<a class="headerlink" href="#high-level-view" title="Link to this heading">¶</a></h2>
 <p>A machine learning training system can easily be modeled as a state machine.</p>
@@ -399,7 +469,7 @@ you can use Burr hooks to log metrics, visualize, etc… at each step. This allo
 <h2>Human in the loop<a class="headerlink" href="#human-in-the-loop" title="Link to this heading">¶</a></h2>
 <p>While some models are trained in a single-shot and shipped to production, many require human input.
 Burr can be used to express training, then checkpoint/pause the state while a human is evaluating it,
-and have their input (e.g. go/no-go) passed in as an <a class="reference external" href="https://burr.dagworks.io/concepts/actions/#runtime-inputs">input parameter</a>.</p>
+and have their input (e.g. go/no-go) passed in as an <a class="reference external" href="https://burr.apache.org/concepts/actions/#runtime-inputs">input parameter</a>.</p>
 <p>Note that this still requires a scheduling tool (say a task executor that runs until the next human input is needed),
 but that task executor does not need to be complicated (all it needs to do is run a job when prompted, and possibly on a chron schedule).</p>
 </section>
@@ -413,7 +483,7 @@ launching new ones as they complete (based on state).</p>
 <section id="code-example">
 <h2>Code example<a class="headerlink" href="#code-example" title="Link to this heading">¶</a></h2>
 <p>This uses the class-based API for defining an <code class="docutils literal notranslate"><span class="pre">action</span></code>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="sd">"""</span>
 <span class="sd">This is a sketch of an example of a machine learning training pipeline using Burr where you</span>
 <span class="sd">want to do something dynamic like train a model for a variable number of iterations and then</span>
 <span class="sd">pick the best model from each of the iterations based on some validation metric. E.g. hyperparameter search.</span>
@@ -422,7 +492,7 @@ launching new ones as they complete (based on state).</p>
 <span class="sd">or hit a max number of iterations (or epochs), etc.</span>
 
 <span class="sd">Note: this example uses the class based API to define the actions. You could also use the function+decorator API.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">burr.core.application</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">burr.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">Action</span><span class="p">,</span> <span class="n">Condition</span><span class="p">,</span> <span class="n">State</span><span class="p">,</span> <span class="n">default</span>
 
@@ -430,100 +500,100 @@ launching new ones as they complete (based on state).</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProcessDataAction</span><span class="p">(</span><span class="n">Action</span><span class="p">):</span>
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">reads</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;data_path&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s2">"data_path"</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">,</span> <span class="o">**</span><span class="n">run_kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;This is where you would load and process your data.</span>
+<span class="w">        </span><span class="sd">"""This is where you would load and process your data.</span>
 <span class="sd">        You can take in state and reference object fields.</span>
 
 <span class="sd">        You need to return a dictionary of the results that `update()` will then use to update the state.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="c1"># load data, and run some feature engineering -- create the data sets</span>
         <span class="c1"># TODO: fill in</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;training_data&quot;</span><span class="p">:</span> <span class="s2">&quot;SOME_OBJECT/PATH&quot;</span><span class="p">,</span> <span class="s2">&quot;evaluation_data&quot;</span><span class="p">:</span> <span class="s2">&quot;SOME_OBJECT/PATH&quot;</span><span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"training_data"</span><span class="p">:</span> <span class="s2">"SOME_OBJECT/PATH"</span><span class="p">,</span> <span class="s2">"evaluation_data"</span><span class="p">:</span> <span class="s2">"SOME_OBJECT/PATH"</span><span class="p">}</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">writes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;training_data&quot;</span><span class="p">,</span> <span class="s2">&quot;evaluation_data&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s2">"training_data"</span><span class="p">,</span> <span class="s2">"evaluation_data"</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">State</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
-            <span class="n">training_data</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;training_data&quot;</span><span class="p">],</span> <span class="n">evaluation_data</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;evaluation_data&quot;</span><span class="p">]</span>
+            <span class="n">training_data</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">"training_data"</span><span class="p">],</span> <span class="n">evaluation_data</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">"evaluation_data"</span><span class="p">]</span>
         <span class="p">)</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">TrainModel</span><span class="p">(</span><span class="n">Action</span><span class="p">):</span>
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">reads</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;training_data&quot;</span><span class="p">,</span> <span class="s2">&quot;iterations&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s2">"training_data"</span><span class="p">,</span> <span class="s2">"iterations"</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">,</span> <span class="o">**</span><span class="n">run_kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;This is where you&#39;d build the model and on each iteration do something different.</span>
+<span class="w">        </span><span class="sd">"""This is where you'd build the model and on each iteration do something different.</span>
 <span class="sd">        E.g. hyperparameter search.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># train the model, i.e. run one &quot;iteration&quot; whatever that means for you.</span>
+<span class="sd">        """</span>
+        <span class="c1"># train the model, i.e. run one "iteration" whatever that means for you.</span>
         <span class="c1"># TODO: fill in</span>
         <span class="k">return</span> <span class="p">{</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;SOME_MODEL&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;iterations&quot;</span><span class="p">:</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;iterations&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
-            <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="s2">&quot;SOME_METRICS&quot;</span><span class="p">,</span>
+            <span class="s2">"model"</span><span class="p">:</span> <span class="s2">"SOME_MODEL"</span><span class="p">,</span>
+            <span class="s2">"iterations"</span><span class="p">:</span> <span class="n">state</span><span class="p">[</span><span class="s2">"iterations"</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s2">"metrics"</span><span class="p">:</span> <span class="s2">"SOME_METRICS"</span><span class="p">,</span>
         <span class="p">}</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">writes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;models&quot;</span><span class="p">,</span> <span class="s2">&quot;training_metrics&quot;</span><span class="p">,</span> <span class="s2">&quot;iterations&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s2">"models"</span><span class="p">,</span> <span class="s2">"training_metrics"</span><span class="p">,</span> <span class="s2">"iterations"</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">State</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
-            <span class="n">iterations</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;iterations&quot;</span><span class="p">],</span>  <span class="c1"># set current iteration value</span>
+            <span class="n">iterations</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">"iterations"</span><span class="p">],</span>  <span class="c1"># set current iteration value</span>
         <span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="n">models</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;model&quot;</span><span class="p">],</span>  <span class="c1"># append -- note this can get big if your model is big</span>
-            <span class="c1"># so you&#39;ll want to overwrite but store the conditions, or log somewhere</span>
-            <span class="n">metrics</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;metrics&quot;</span><span class="p">],</span>  <span class="c1"># append the metrics</span>
+            <span class="n">models</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">"model"</span><span class="p">],</span>  <span class="c1"># append -- note this can get big if your model is big</span>
+            <span class="c1"># so you'll want to overwrite but store the conditions, or log somewhere</span>
+            <span class="n">metrics</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">"metrics"</span><span class="p">],</span>  <span class="c1"># append the metrics</span>
         <span class="p">)</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ValidateModel</span><span class="p">(</span><span class="n">Action</span><span class="p">):</span>
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">reads</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;models&quot;</span><span class="p">,</span> <span class="s2">&quot;evaluation_data&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s2">"models"</span><span class="p">,</span> <span class="s2">"evaluation_data"</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">,</span> <span class="o">**</span><span class="n">run_kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute validation metrics using the model and evaluation data.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Compute validation metrics using the model and evaluation data."""</span>
         <span class="c1"># TODO: fill in</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;validation_metrics&quot;</span><span class="p">:</span> <span class="s2">&quot;SOME_METRICS&quot;</span><span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"validation_metrics"</span><span class="p">:</span> <span class="s2">"SOME_METRICS"</span><span class="p">}</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">writes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;validation_metrics&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s2">"validation_metrics"</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">State</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">state</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">validation_metrics</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;validation_metrics&quot;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">state</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">validation_metrics</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">"validation_metrics"</span><span class="p">])</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">BestModel</span><span class="p">(</span><span class="n">Action</span><span class="p">):</span>
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">reads</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;validation_metrics&quot;</span><span class="p">,</span> <span class="s2">&quot;models&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s2">"validation_metrics"</span><span class="p">,</span> <span class="s2">"models"</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">,</span> <span class="o">**</span><span class="n">run_kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Select the best model based on the validation metrics.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Select the best model based on the validation metrics."""</span>
         <span class="c1"># TODO: fill in</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;best_model&quot;</span><span class="p">:</span> <span class="s2">&quot;SOME_MODEL&quot;</span><span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"best_model"</span><span class="p">:</span> <span class="s2">"SOME_MODEL"</span><span class="p">}</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">writes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;best_model&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s2">"best_model"</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">State</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">State</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">best_model</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;best_model&quot;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">state</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">best_model</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">"best_model"</span><span class="p">])</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">application</span><span class="p">(</span><span class="n">iterations</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">burr</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">application</span><span class="o">.</span><span class="n">Application</span><span class="p">:</span>
     <span class="k">return</span> <span class="p">(</span>
         <span class="n">burr</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">ApplicationBuilder</span><span class="p">()</span>
         <span class="o">.</span><span class="n">with_state</span><span class="p">(</span>
-            <span class="n">data_path</span><span class="o">=</span><span class="s2">&quot;data.csv&quot;</span><span class="p">,</span>
+            <span class="n">data_path</span><span class="o">=</span><span class="s2">"data.csv"</span><span class="p">,</span>
             <span class="n">iterations</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
             <span class="n">training_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">evaluation_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -539,21 +609,21 @@ launching new ones as they complete (based on state).</p>
             <span class="n">best_model</span><span class="o">=</span><span class="n">BestModel</span><span class="p">(),</span>
         <span class="p">)</span>
         <span class="o">.</span><span class="n">with_transitions</span><span class="p">(</span>
-            <span class="p">(</span><span class="s2">&quot;process_data&quot;</span><span class="p">,</span> <span class="s2">&quot;train_model&quot;</span><span class="p">,</span> <span class="n">default</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;train_model&quot;</span><span class="p">,</span> <span class="s2">&quot;validate_model&quot;</span><span class="p">,</span> <span class="n">default</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;validate_model&quot;</span><span class="p">,</span> <span class="s2">&quot;best_model&quot;</span><span class="p">,</span> <span class="n">Condition</span><span class="o">.</span><span class="n">expr</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;iterations&gt;</span><span class="si">{</span><span class="n">iterations</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)),</span>
-            <span class="p">(</span><span class="s2">&quot;validate_model&quot;</span><span class="p">,</span> <span class="s2">&quot;train_model&quot;</span><span class="p">,</span> <span class="n">default</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"process_data"</span><span class="p">,</span> <span class="s2">"train_model"</span><span class="p">,</span> <span class="n">default</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"train_model"</span><span class="p">,</span> <span class="s2">"validate_model"</span><span class="p">,</span> <span class="n">default</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"validate_model"</span><span class="p">,</span> <span class="s2">"best_model"</span><span class="p">,</span> <span class="n">Condition</span><span class="o">.</span><span class="n">expr</span><span class="p">(</span><span class="sa">f</span><span class="s2">"iterations&gt;</span><span class="si">{</span><span class="n">iterations</span><span class="si">}</span><span class="s2">"</span><span class="p">)),</span>
+            <span class="p">(</span><span class="s2">"validate_model"</span><span class="p">,</span> <span class="s2">"train_model"</span><span class="p">,</span> <span class="n">default</span><span class="p">),</span>
         <span class="p">)</span>
-        <span class="o">.</span><span class="n">with_entrypoint</span><span class="p">(</span><span class="s2">&quot;process_data&quot;</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">with_entrypoint</span><span class="p">(</span><span class="s2">"process_data"</span><span class="p">)</span>
         <span class="o">.</span><span class="n">build</span><span class="p">()</span>
     <span class="p">)</span>
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
     <span class="n">app</span> <span class="o">=</span> <span class="n">application</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>  <span class="c1"># doing good data science is up to you...</span>
-    <span class="n">app</span><span class="o">.</span><span class="n">visualize</span><span class="p">(</span><span class="n">output_file_path</span><span class="o">=</span><span class="s2">&quot;statemachine&quot;</span><span class="p">,</span> <span class="n">include_conditions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">view</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;png&quot;</span><span class="p">)</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">visualize</span><span class="p">(</span><span class="n">output_file_path</span><span class="o">=</span><span class="s2">"statemachine"</span><span class="p">,</span> <span class="n">include_conditions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">view</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">"png"</span><span class="p">)</span>
     <span class="c1"># you could run things like this:</span>
-    <span class="c1"># last_action, result, state = app.run(halt_after=[&quot;best_model&quot;])</span>
+    <span class="c1"># last_action, result, state = app.run(halt_after=["best_model"])</span>
 </pre></div>
 </div>
 </section>
@@ -588,7 +658,7 @@ launching new ones as they complete (based on state).</p>
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2024, Elijah ben Izzy, Stefan Krawczyk
+                Copyright &#169; The Apache Software Foundation, Licensed under the Apache License, Version 2.0.
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             
@@ -596,7 +666,20 @@ launching new ones as they complete (based on state).</p>
             
           </div>
           <div class="right-details">
-            
+            <div class="icons">
+              <a class="muted-link " href="https://incubator.apache.org/" aria-label="Apache Stuff">
+<div class="apache-footer">
+    <img width="200" src="/_static/apache-incubator-logo.svg" alt="Apache Incubator Logo" class="apache-incubator-logo">
+    <div class="apache-notice">
+        <p>Apache Burr is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.</p>
+    </div>
+    <div class="apache-copyright">
+        <p>Apache, the names of Apache projects, and the feather logo are either registered trademarks or trademarks of the Apache Software Foundation in the United States and/or other countries.</p>
+    </div>
+</div>
+</a>
+              
+            </div>
           </div>
         </div>
         
