@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 import { Fragment, useState } from 'react';
 import { Dialog, Disclosure, Transition } from '@headlessui/react';
 import {
@@ -18,6 +37,7 @@ import { classNames } from '../../utils/tailwind';
 import React from 'react';
 import { DefaultService } from '../../api';
 import { useQuery } from 'react-query';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 // Define your GitHub logo SVG as a React component
 const GithubLogo = () => (
@@ -46,8 +66,8 @@ const ToggleOpenButton = (props: { open: boolean; toggleSidebar: () => void }) =
   return (
     <MinimizeMaximizeIcon
       className={classNames(
-        'text-gray-400',
-        'h-8 w-8 hover:bg-gray-50 rounded-md hover:cursor-pointer'
+        'text-gray-400 dark:text-gray-500',
+        'h-8 w-8 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md hover:cursor-pointer'
       )}
       aria-hidden="true"
       onClick={props.toggleSidebar}
@@ -83,7 +103,7 @@ export const AppContainer = (props: { children: React.ReactNode }) => {
     },
     {
       name: 'Examples',
-      href: 'https://github.com/DAGWorks-Inc/burr/tree/main/examples',
+      href: 'https://github.com/apache/burr/tree/main/examples',
       icon: FolderIcon,
       linkType: 'external'
     },
@@ -121,19 +141,19 @@ export const AppContainer = (props: { children: React.ReactNode }) => {
       : []),
     {
       name: 'Develop',
-      href: 'https://github.com/dagworks-inc/burr',
+      href: 'https://github.com/apache/burr',
       icon: ComputerDesktopIcon,
       linkType: 'external'
     },
     {
       name: 'Documentation',
-      href: 'https://burr.dagworks.io',
+      href: 'https://burr.apache.org',
       icon: QuestionMarkCircleIcon,
       linkType: 'external'
     },
     {
       name: 'GitHub Discussions',
-      href: 'https://github.com/DAGWorks-Inc/burr/discussions',
+      href: 'https://github.com/apache/burr/discussions',
       icon: GithubLogo,
       linkType: 'external'
     },
@@ -163,7 +183,7 @@ export const AppContainer = (props: { children: React.ReactNode }) => {
 
   return (
     <>
-      <div className="h-screen w-screen overflow-x-auto">
+      <div className="h-screen w-screen overflow-x-auto bg-white dark:bg-gray-900">
         <Transition.Root show={smallSidebarOpen} as={Fragment}>
           <Dialog as="div" className="relative z-50 lg:hidden" onClose={setSmallSidebarOpen}>
             <Transition.Child
@@ -210,9 +230,13 @@ export const AppContainer = (props: { children: React.ReactNode }) => {
                     </div>
                   </Transition.Child>
                   {/* Sidebar component, swap this element with another sidebar if you like */}
-                  <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-2 py-2">
+                  <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-2 py-2 dark:bg-gray-900">
                     <div className="flex h-16 shrink-0 items-center">
-                      <img className="h-10 w-auto" src={'/logo.png'} alt="Burr" />
+                      <img
+                        className="h-10 w-auto"
+                        src={`${window.__BURR_BASE_PATH__ || ''}/logo.png`}
+                        alt="Burr"
+                      />
                     </div>
                     <nav className="flex flex-1 flex-col">
                       <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -264,9 +288,13 @@ export const AppContainer = (props: { children: React.ReactNode }) => {
           }`}
         >
           {/* Sidebar component, swap this element with another sidebar if you like */}
-          <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 py-2">
+          <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 py-2 dark:border-gray-700 dark:bg-gray-900">
             <div className="flex h-16 shrink-0 items-center">
-              <img className="h-12 w-auto" src={'/public/logo.png'} alt="Burr" />
+              <img
+                className="h-12 w-auto"
+                src={`${window.__BURR_BASE_PATH__ || ''}/public/logo.png`}
+                alt="Burr"
+              />
             </div>
             <nav className="flex flex-1 flex-col">
               <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -279,15 +307,15 @@ export const AppContainer = (props: { children: React.ReactNode }) => {
                             to={item.href}
                             className={classNames(
                               isCurrent(item.href, item.linkType)
-                                ? 'bg-gray-50'
-                                : 'hover:bg-gray-50',
-                              'group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700'
+                                ? 'bg-gray-50 dark:bg-gray-800'
+                                : 'hover:bg-gray-50 dark:hover:bg-gray-800',
+                              'group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 dark:text-gray-200'
                             )}
                             target={item.linkType === 'external' ? '_blank' : undefined}
                             rel={item.linkType === 'external' ? 'noreferrer' : undefined}
                           >
                             <item.icon
-                              className="h-6 w-6 shrink-0 text-gray-400"
+                              className="h-6 w-6 shrink-0 text-gray-400 dark:text-gray-500"
                               aria-hidden="true"
                             />
                             {item.name}
@@ -299,13 +327,14 @@ export const AppContainer = (props: { children: React.ReactNode }) => {
                                 <Disclosure.Button
                                   className={classNames(
                                     isCurrent(item.href, item.linkType)
-                                      ? 'bg-gray-50'
-                                      : 'hover:bg-gray-50',
-                                    'flex items-center w-full text-left rounded-md p-2 gap-x-3 text-sm leading-6 font-semibold text-gray-700'
+                                      ? 'bg-gray-50 dark:bg-gray-800'
+                                      : 'hover:bg-gray-50 dark:hover:bg-gray-800',
+                                    'flex items-center w-full text-left rounded-md p-2 gap-x-3 text-sm leading-6 font-semibold text-gray-700 dark:text-gray-200'
                                   )}
                                 >
+
                                   <item.icon
-                                    className="h-6 w-6 shrink-0 text-gray-400"
+                                    className="h-6 w-6 shrink-0 text-gray-400 dark:text-gray-500"
                                     aria-hidden="true"
                                   />
                                   {item.name}
@@ -324,9 +353,9 @@ export const AppContainer = (props: { children: React.ReactNode }) => {
                                         to={subItem.href}
                                         className={classNames(
                                           isCurrent(subItem.href, subItem.linkType)
-                                            ? 'bg-gray-50'
-                                            : 'hover:bg-gray-50',
-                                          'block rounded-md py-2 pr-2 pl-9 text-sm leading-6 text-gray-700'
+                                            ? 'bg-gray-50 dark:bg-gray-800'
+                                            : 'hover:bg-gray-50 dark:hover:bg-gray-800',
+                                          'block rounded-md py-2 pr-2 pl-9 text-sm leading-6 text-gray-700 dark:text-gray-300'
                                         )}
                                         target={
                                           subItem.linkType === 'external' ? '_blank' : undefined
@@ -350,7 +379,8 @@ export const AppContainer = (props: { children: React.ReactNode }) => {
                 </li>
               </ul>
             </nav>
-            <div className="flex justify-start -mx-5">
+            <div className="flex justify-between items-center -mx-5 px-5">
+              <ThemeToggle />
               <ToggleOpenButton open={sidebarOpen} toggleSidebar={toggleSidebar} />
             </div>
           </div>

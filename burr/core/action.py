@@ -1,9 +1,27 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 import abc
 import ast
 import builtins
 import copy
 import inspect
 import sys
+import textwrap
 import types
 import typing
 from collections.abc import AsyncIterator
@@ -32,7 +50,124 @@ else:
     from typing import Self
 
 from burr.core.state import State
+
+
+def _validate_declared_reads(fn: Callable, declared_reads: list[str]) -> None:
+    if not declared_reads:
+        return
+
+    try:
+        source = inspect.getsource(fn)
+    except OSError:
+        return  # skip if source unavailable
+
+    # detect actual state parameter name
+    sig = inspect.signature(fn)
+    state_param_name = None
+
+    for name, param in sig.parameters.items():
+        if param.annotation is State:
+            state_param_name = name
+            break
+
+    if state_param_name is None:
+        return
+
+    tree = ast.parse(textwrap.dedent(source))
+
+    declared = set(declared_reads)
+    violations = []
+
+    class Visitor(ast.NodeVisitor):
+        def visit_Subscript(self, node):
+            if (
+                isinstance(node.value, ast.Name)
+                and node.value.id == state_param_name
+                and isinstance(node.slice, ast.Constant)
+                and isinstance(node.slice.value, str)
+            ):
+                key = node.slice.value
+                if key not in declared:
+                    violations.append(key)
+            self.generic_visit(node)
+
+    Visitor().visit(tree)
+
+    if violations:
+        raise ValueError(
+            f"Action reads undeclared state keys: {violations}. "
+            f"Declared reads: {declared_reads}"
+        )
+
+
+from functools import wraps
+
 from burr.core.typing import ActionSchema
+
+
+def type_eraser(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator for ``run``, ``stream_run``, and ``run_and_update`` overrides
+    that declare explicit parameters instead of ``**run_kwargs``.
+
+    Applying this decorator prevents mypy ``[override]`` errors caused by
+    narrowing the base-class signature (which uses ``**run_kwargs``).
+
+    Example usage::
+
+        from burr.core import Action, State, type_eraser
+
+        class Counter(Action):
+            @property
+            def reads(self) -> list[str]:
+                return ["counter"]
+
+            @type_eraser
+            def run(self, state: State, increment_by: int) -> dict:
+                return {"counter": state["counter"] + increment_by}
+
+            @property
+            def writes(self) -> list[str]:
+                return ["counter"]
+
+            def update(self, result: dict, state: State) -> State:
+                return state.update(**result)
+
+            @property
+            def inputs(self) -> list[str]:
+                return ["increment_by"]
+    """
+
+    if inspect.iscoroutinefunction(func):
+
+        @wraps(func)
+        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+            return await func(*args, **kwargs)
+
+        return async_wrapper
+
+    if inspect.isasyncgenfunction(func):
+
+        @wraps(func)
+        async def async_gen_wrapper(*args: Any, **kwargs: Any) -> Any:
+            async for item in func(*args, **kwargs):
+                yield item
+
+        return async_gen_wrapper
+
+    if inspect.isgeneratorfunction(func):
+
+        @wraps(func)
+        def gen_wrapper(*args: Any, **kwargs: Any) -> Any:
+            yield from func(*args, **kwargs)
+
+        return gen_wrapper
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        return func(*args, **kwargs)
+
+    return wrapper
+
 
 # This is here to make accessing the pydantic actions easier
 # we just attach them to action so you can call `@action.pyddantic...`
@@ -108,16 +243,12 @@ class Function(abc.ABC):
         missing_inputs = required_inputs - given_inputs
         additional_inputs = given_inputs - required_inputs - optional_inputs
         if missing_inputs or additional_inputs:
-            raise ValueError(
-                f"Inputs to function {self} are invalid. "
-                + f"Missing the following inputs: {', '.join(missing_inputs)}."
-                if missing_inputs
-                else (
-                    "" f"Additional inputs: {','.join(additional_inputs)}."
-                    if additional_inputs
-                    else ""
-                )
-            )
+            parts = [f"Inputs to function {self} are invalid."]
+            if missing_inputs:
+                parts.append(f"Missing the following inputs: {', '.join(missing_inputs)}.")
+            if additional_inputs:
+                parts.append(f"Additional inputs: {', '.join(additional_inputs)}.")
+            raise ValueError(" ".join(parts))
 
     def is_async(self) -> bool:
         """Convenience method to check if the function is async or not.
@@ -249,6 +380,320 @@ class Action(Function, Reducer, abc.ABC):
         return []
 
 
+# ---------------------------------------------------------------------------
+# Safe expression evaluator used by Condition.safe_expr.
+#
+# These are intentionally module-private. The validator walks the AST and
+# rejects any node that isn't on the allowlist; the interpreter then walks
+# the (validated) tree and produces a value. eval()/compile() are never
+# called on the parsed tree -- that is the entire point.
+# ---------------------------------------------------------------------------
+
+# Builtins we are willing to expose inside safe_expr. Everything here returns
+# a value (no side effects), takes only basic Python data, and cannot be used
+# to reach the import system or the interpreter internals.
+_SAFE_EXPR_BUILTINS: typing.Dict[str, Callable] = {
+    "len": len,
+    "abs": abs,
+    "min": min,
+    "max": max,
+    "sum": sum,
+    "all": all,
+    "any": any,
+    "str": str,
+    "int": int,
+    "float": float,
+    "bool": bool,
+}
+
+# AST BinOp / UnaryOp / BoolOp / Compare operator classes we accept.
+_SAFE_BINOPS = (
+    ast.Add,
+    ast.Sub,
+    ast.Mult,
+    ast.Div,
+    ast.FloorDiv,
+    ast.Mod,
+    ast.Pow,
+)
+_SAFE_UNARYOPS = (ast.Not, ast.USub, ast.UAdd)
+_SAFE_BOOLOPS = (ast.And, ast.Or)
+_SAFE_CMPOPS = (
+    ast.Eq,
+    ast.NotEq,
+    ast.Lt,
+    ast.LtE,
+    ast.Gt,
+    ast.GtE,
+    ast.In,
+    ast.NotIn,
+    ast.Is,
+    ast.IsNot,
+)
+
+
+class _SafeExprValidator(ast.NodeVisitor):
+    """Walks an AST and raises ``ValueError`` on any node not on the allowlist.
+
+    Run once at ``safe_expr()`` call time -- the resulting Condition is only
+    built if validation passes, so rejected expressions never reach runtime.
+    """
+
+    def _reject(self, node: ast.AST, why: str) -> None:
+        raise ValueError(
+            f"safe_expr: disallowed construct in expression: {why} "
+            f"(at line {getattr(node, 'lineno', '?')}, col {getattr(node, 'col_offset', '?')})"
+        )
+
+    # The Expression wrapper produced by ast.parse(mode="eval").
+    def visit_Expression(self, node: ast.Expression) -> None:
+        self.visit(node.body)
+
+    def visit_Constant(self, node: ast.Constant) -> None:
+        if isinstance(node.value, (int, float, str, bool)) or node.value is None:
+            return
+        self._reject(node, f"constant of type {type(node.value).__name__}")
+
+    def visit_Name(self, node: ast.Name) -> None:
+        # Reading is fine; assignment (Store/Del) is unreachable from mode="eval"
+        # but be explicit.
+        if not isinstance(node.ctx, ast.Load):
+            self._reject(node, "assignment / deletion")
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        if node.attr.startswith("__"):
+            self._reject(node, f"dunder attribute access '{node.attr}'")
+        self.visit(node.value)
+
+    def visit_Subscript(self, node: ast.Subscript) -> None:
+        self.visit(node.value)
+        self.visit(node.slice)
+
+    def visit_Slice(self, node: ast.Slice) -> None:
+        for child in (node.lower, node.upper, node.step):
+            if child is not None:
+                self.visit(child)
+
+    # Python <3.9 wraps subscript indices in ast.Index; keep a permissive visitor.
+    def visit_Index(self, node) -> None:  # pragma: no cover - legacy py
+        self.visit(node.value)
+
+    def visit_Compare(self, node: ast.Compare) -> None:
+        for op in node.ops:
+            if not isinstance(op, _SAFE_CMPOPS):
+                self._reject(node, f"comparison operator {type(op).__name__}")
+        self.visit(node.left)
+        for cmp in node.comparators:
+            self.visit(cmp)
+
+    def visit_BoolOp(self, node: ast.BoolOp) -> None:
+        if not isinstance(node.op, _SAFE_BOOLOPS):
+            self._reject(node, f"boolean operator {type(node.op).__name__}")
+        for v in node.values:
+            self.visit(v)
+
+    def visit_UnaryOp(self, node: ast.UnaryOp) -> None:
+        if not isinstance(node.op, _SAFE_UNARYOPS):
+            self._reject(node, f"unary operator {type(node.op).__name__}")
+        self.visit(node.operand)
+
+    def visit_BinOp(self, node: ast.BinOp) -> None:
+        if not isinstance(node.op, _SAFE_BINOPS):
+            self._reject(node, f"binary operator {type(node.op).__name__}")
+        self.visit(node.left)
+        self.visit(node.right)
+
+    def visit_Tuple(self, node: ast.Tuple) -> None:
+        for elt in node.elts:
+            self.visit(elt)
+
+    def visit_List(self, node: ast.List) -> None:
+        for elt in node.elts:
+            self.visit(elt)
+
+    def visit_Set(self, node: ast.Set) -> None:
+        for elt in node.elts:
+            self.visit(elt)
+
+    def visit_Dict(self, node: ast.Dict) -> None:
+        for k in node.keys:
+            if k is not None:
+                self.visit(k)
+        for v in node.values:
+            self.visit(v)
+
+    def visit_Call(self, node: ast.Call) -> None:
+        # Only direct calls to allowlisted builtins by bare Name.
+        if not isinstance(node.func, ast.Name):
+            self._reject(node, "indirect call (only bare builtin names allowed)")
+        if node.func.id not in _SAFE_EXPR_BUILTINS:
+            self._reject(node, f"call to disallowed function '{node.func.id}'")
+        if any(isinstance(a, ast.Starred) for a in node.args):
+            self._reject(node, "starred argument")
+        if node.keywords:
+            self._reject(node, "keyword arguments to builtin call")
+        for a in node.args:
+            self.visit(a)
+
+    # Catch-all: anything we didn't explicitly allow is rejected. This is the
+    # important rule -- additions to the grammar require explicit opt-in.
+    def generic_visit(self, node: ast.AST) -> None:
+        self._reject(node, f"node type {type(node).__name__}")
+
+
+class _SafeExprInterpreter:
+    """Direct AST interpreter for the safe_expr grammar.
+
+    Only handles nodes already approved by :class:`_SafeExprValidator`. We
+    raise ``ValueError`` defensively if an unknown node sneaks in -- but in
+    practice the validator should have caught it first.
+    """
+
+    def __init__(self, names: typing.Mapping[str, typing.Any]):
+        self._names = names
+
+    def eval(self, node: ast.AST) -> typing.Any:  # noqa: A003 - matches ast naming
+        if isinstance(node, ast.Expression):
+            return self.eval(node.body)
+        method = getattr(self, f"_eval_{type(node).__name__}", None)
+        if method is None:
+            raise ValueError(
+                f"safe_expr: interpreter encountered unsupported node {type(node).__name__}"
+            )
+        return method(node)
+
+    def _eval_Constant(self, node: ast.Constant):
+        return node.value
+
+    def _eval_Name(self, node: ast.Name):
+        # Builtins on the allowlist resolve to the builtin; otherwise look up state.
+        if node.id in _SAFE_EXPR_BUILTINS:
+            return _SAFE_EXPR_BUILTINS[node.id]
+        if node.id in self._names:
+            return self._names[node.id]
+        raise NameError(f"safe_expr: name '{node.id}' is not defined")
+
+    def _eval_Attribute(self, node: ast.Attribute):
+        # Validator already rejected dunder access.
+        return getattr(self.eval(node.value), node.attr)
+
+    def _eval_Subscript(self, node: ast.Subscript):
+        value = self.eval(node.value)
+        slice_node = node.slice
+        # py<3.9 wraps in ast.Index
+        if hasattr(ast, "Index") and isinstance(slice_node, ast.Index):  # pragma: no cover
+            slice_node = slice_node.value  # type: ignore[attr-defined]
+        if isinstance(slice_node, ast.Slice):
+            lower = self.eval(slice_node.lower) if slice_node.lower is not None else None
+            upper = self.eval(slice_node.upper) if slice_node.upper is not None else None
+            step = self.eval(slice_node.step) if slice_node.step is not None else None
+            return value[slice(lower, upper, step)]
+        return value[self.eval(slice_node)]
+
+    def _eval_Compare(self, node: ast.Compare):
+        left = self.eval(node.left)
+        for op, right_node in zip(node.ops, node.comparators):
+            right = self.eval(right_node)
+            if isinstance(op, ast.Eq):
+                ok = left == right
+            elif isinstance(op, ast.NotEq):
+                ok = left != right
+            elif isinstance(op, ast.Lt):
+                ok = left < right
+            elif isinstance(op, ast.LtE):
+                ok = left <= right
+            elif isinstance(op, ast.Gt):
+                ok = left > right
+            elif isinstance(op, ast.GtE):
+                ok = left >= right
+            elif isinstance(op, ast.In):
+                ok = left in right
+            elif isinstance(op, ast.NotIn):
+                ok = left not in right
+            elif isinstance(op, ast.Is):
+                ok = left is right
+            elif isinstance(op, ast.IsNot):
+                ok = left is not right
+            else:  # pragma: no cover - validator catches this
+                raise ValueError(f"safe_expr: unsupported comparator {type(op).__name__}")
+            if not ok:
+                return False
+            left = right
+        return True
+
+    def _eval_BoolOp(self, node: ast.BoolOp):
+        if isinstance(node.op, ast.And):
+            result = True
+            for v in node.values:
+                result = self.eval(v)
+                if not result:
+                    return result
+            return result
+        # Or
+        result = False
+        for v in node.values:
+            result = self.eval(v)
+            if result:
+                return result
+        return result
+
+    def _eval_UnaryOp(self, node: ast.UnaryOp):
+        operand = self.eval(node.operand)
+        if isinstance(node.op, ast.Not):
+            return not operand
+        if isinstance(node.op, ast.USub):
+            return -operand
+        if isinstance(node.op, ast.UAdd):
+            return +operand
+        raise ValueError(  # pragma: no cover
+            f"safe_expr: unsupported unary op {type(node.op).__name__}"
+        )
+
+    def _eval_BinOp(self, node: ast.BinOp):
+        left = self.eval(node.left)
+        right = self.eval(node.right)
+        op = node.op
+        if isinstance(op, ast.Add):
+            return left + right
+        if isinstance(op, ast.Sub):
+            return left - right
+        if isinstance(op, ast.Mult):
+            return left * right
+        if isinstance(op, ast.Div):
+            return left / right
+        if isinstance(op, ast.FloorDiv):
+            return left // right
+        if isinstance(op, ast.Mod):
+            return left % right
+        if isinstance(op, ast.Pow):
+            return left**right
+        raise ValueError(  # pragma: no cover
+            f"safe_expr: unsupported binary op {type(op).__name__}"
+        )
+
+    def _eval_Tuple(self, node: ast.Tuple):
+        return tuple(self.eval(e) for e in node.elts)
+
+    def _eval_List(self, node: ast.List):
+        return [self.eval(e) for e in node.elts]
+
+    def _eval_Set(self, node: ast.Set):
+        return {self.eval(e) for e in node.elts}
+
+    def _eval_Dict(self, node: ast.Dict):
+        return {
+            (self.eval(k) if k is not None else None): self.eval(v)
+            for k, v in zip(node.keys, node.values)
+        }
+
+    def _eval_Call(self, node: ast.Call):
+        # Validator guarantees node.func is a Name in _SAFE_EXPR_BUILTINS,
+        # no keywords, no starred args.
+        func = _SAFE_EXPR_BUILTINS[node.func.id]  # type: ignore[attr-defined]
+        args = [self.eval(a) for a in node.args]
+        return func(*args)
+
+
 class Condition(Function):
     KEY = "PROCEED"
 
@@ -279,14 +724,36 @@ class Condition(Function):
 
     @staticmethod
     def expr(expr: str) -> "Condition":
-        """Returns a condition that evaluates the given expression. Expression must use
-        only state variables and Python operators. Do not trust that anything else will work.
+        """Returns a condition that evaluates the given expression against state.
 
         Do not accept expressions generated from user-inputted text, this has the potential to be unsafe.
+        Internally this uses :func:`eval`, so the expression can execute arbitrary Python and should only
+        be used with developer-authored strings. If you need to accept expressions from less-trusted
+        sources (dashboards, YAML, user input), use :meth:`Condition.safe_expr` which restricts
+        evaluation to a small allowlisted AST grammar interpreted directly (no :func:`eval`).
 
         You can also refer to this as ``from burr.core import expr`` in the API.
 
-        :param expr: Expression to evaluate
+        .. warning::
+            ``Condition.expr`` runs the supplied string under a full Python ``eval``.
+            Passing user-supplied or otherwise attacker-controllable strings to this
+            function is equivalent to arbitrary code execution inside the application
+            process. For example, an attacker who controls the expression string can
+            execute ``__import__("os").system("...")`` or
+            ``__import__("subprocess").check_output([...])`` and reach anything the
+            host process can reach.
+
+            The ``globals=None`` argument to ``eval`` below is **not** a sandbox:
+            CPython auto-injects ``__builtins__`` when globals is empty or ``None``,
+            which is in fact relied upon here so that expressions like ``len(x)`` work.
+            No part of this function attempts to sandbox the evaluation.
+
+            If you need to accept untrusted expressions, do not use ``expr``. Track
+            ``apache/burr#817`` for the opt-in safe-AST evaluator intended for that
+            use case.
+
+        :param expr: Expression to evaluate. Must be a developer-authored Python
+            expression over state variables and standard operators/builtins.
         :return: A condition that evaluates the given expression
         """
         tree = ast.parse(expr, mode="eval")
@@ -309,7 +776,82 @@ class Condition(Function):
         # Compile the expression into a callable function
         def condition_func(state: State) -> bool:
             __globals = state.get_all()  # we can get all because externally we will subset
-            return eval(compile(tree, "<string>", "eval"), {}, __globals)
+            # NOTE: globals=None is *not* a sandbox -- CPython injects __builtins__
+            # automatically. See the docstring above. Builtins (e.g. ``len``) are
+            # intentionally available to developer-authored expressions.
+            return eval(compile(tree, "<string>", "eval"), None, __globals)
+
+        return Condition(keys, condition_func, name=expr)
+
+    @staticmethod
+    def safe_expr(expr: str) -> "Condition":
+        """Returns a condition that evaluates ``expr`` under a restricted, allowlisted AST grammar.
+
+        This is the opt-in safe sibling of :meth:`Condition.expr`. Whereas ``expr()`` uses
+        :func:`eval` and therefore accepts the full Python expression grammar (and is unsafe
+        for untrusted input), ``safe_expr()`` parses the expression, validates every node
+        against an allowlist at call time, and then *interprets* the validated tree directly.
+        :func:`eval` is never invoked on the parsed tree.
+
+        Use ``safe_expr`` when the expression string comes from a less-trusted source --
+        for example a dashboard rule editor, a YAML-driven graph definition, or any user
+        input. Use ``expr`` when the expression is authored by a developer and checked in.
+
+        The allowed grammar is intentionally small:
+
+        - Constants: ``int``, ``float``, ``str``, ``bool``, ``None``.
+        - ``Name`` lookups, resolved against the state via :meth:`State.get_all`.
+        - ``Attribute`` access on names / other attributes. Any attribute whose name
+          starts with ``__`` (dunder) is rejected -- this closes the standard
+          ``().__class__.__bases__[0].__subclasses__()`` sandbox-escape pattern.
+        - ``Subscript`` (``state["foo"]``, ``items[0]``, slices).
+        - ``Compare``: ``==``, ``!=``, ``<``, ``>``, ``<=``, ``>=``, ``in``, ``not in``,
+          ``is``, ``is not``.
+        - ``BoolOp``: ``and``, ``or``.
+        - ``UnaryOp``: ``not``, unary ``-``, unary ``+``.
+        - ``BinOp`` arithmetic: ``+``, ``-``, ``*``, ``/``, ``//``, ``%``, ``**``.
+        - Literal containers: tuple, list, set, dict.
+        - ``Call`` only to a tight allowlist of safe builtins by name:
+          ``len``, ``abs``, ``min``, ``max``, ``sum``, ``all``, ``any``, ``str``,
+          ``int``, ``float``, ``bool``. All other calls are rejected.
+
+        Everything else is rejected at ``safe_expr()`` call time (not at run time),
+        including: lambdas, conditional expressions (``a if b else c``),
+        comprehensions and generator expressions, the walrus operator,
+        ``await``, ``yield``, imports, and any ``Call`` not on the builtin allowlist.
+
+        :param expr: Expression to evaluate
+        :return: A condition that evaluates the given expression
+        :raises ValueError: if the expression contains any disallowed construct
+            (raised at call time -- the condition is rejected before it ever runs).
+        :raises SyntaxError: if the expression is not syntactically valid Python.
+        """
+        # Parse first. This raises SyntaxError for malformed input, which is fine.
+        tree = ast.parse(expr, mode="eval")
+        # Validate the whole tree against the allowlist *now*, at call time. If any
+        # disallowed node exists we raise here, before constructing the Condition.
+        _SafeExprValidator().visit(tree)
+
+        # Collect Name references for keys, mirroring expr().
+        all_builtins = builtins.__dict__
+
+        class _NameCollector(ast.NodeVisitor):
+            def __init__(self):
+                self.names = set()
+
+            def visit_Name(self, node):
+                if node.id not in all_builtins:
+                    self.names.add(node.id)
+
+        collector = _NameCollector()
+        collector.visit(tree)
+        keys = list(collector.names)
+
+        def condition_func(state: State) -> bool:
+            # Interpret the validated tree directly. We deliberately do NOT call
+            # eval()/compile() on the tree -- the whole safety argument rests on
+            # this. The interpreter only implements the allowlisted node types.
+            return bool(_SafeExprInterpreter(state.get_all()).eval(tree))
 
         return Condition(keys, condition_func, name=expr)
 
@@ -355,26 +897,105 @@ class Condition(Function):
     def reads(self) -> list[str]:
         return self._keys
 
+    _OPERATORS = {
+        "eq": ("==", lambda a, b: a == b),
+        "ne": ("!=", lambda a, b: a != b),
+        "lt": ("<", lambda a, b: a < b),
+        "lte": ("<=", lambda a, b: a <= b),
+        "gt": (">", lambda a, b: a > b),
+        "gte": (">=", lambda a, b: a >= b),
+        "in": ("in", lambda a, b: a in b),
+        "notin": ("not in", lambda a, b: a not in b),
+        "contains": ("contains", lambda a, b: b in a),
+        "is": ("is", lambda a, b: a is b),
+        "isnot": ("is not", lambda a, b: a is not b),
+    }
+
+    @classmethod
+    def _parse_kwarg(cls, kwarg_key: str, value):
+        """Parse a kwarg key into (state_key, operator_symbol, comparison_func, explicit).
+
+        Supports Django-style lookups: ``key__gte=10`` parses as key >= 10.
+        Plain ``key=value`` defaults to equality (implicit).
+
+        Returns a tuple of (state_key, symbol, func, explicit) where explicit
+        indicates whether an operator suffix was present.
+        """
+        for suffix, (symbol, func) in cls._OPERATORS.items():
+            dunder = f"__{suffix}"
+            if kwarg_key.endswith(dunder):
+                state_key = kwarg_key[: -len(dunder)]
+                if not state_key:
+                    raise ValueError(
+                        f"Invalid when() key: '{kwarg_key}' — " f"no state key before '__{suffix}'"
+                    )
+                return state_key, symbol, func, True
+        return kwarg_key, "=", lambda a, b: a == b, False
+
     @classmethod
     def when(cls, **kwargs):
-        """Returns a condition that checks if the given keys are in the
-        state and equal to the given values.
+        """Returns a condition that checks state values using optional operators.
 
         You can also refer to this as ``from burr.core import when`` in the API.
 
-        :param kwargs: Keyword arguments of keys and values to check -- will be an AND condition
-        :return: A condition that checks if the given keys are in the state and equal to the given values
+        Basic equality (unchanged from original)::
+
+            when(foo="bar")            # state["foo"] == "bar"
+            when(foo="bar", baz="qux") # state["foo"] == "bar" AND state["baz"] == "qux"
+
+        Comparison operators via ``__`` suffix::
+
+            when(age__gt=18)           # state["age"] > 18
+            when(age__gte=18)          # state["age"] >= 18
+            when(age__lt=18)           # state["age"] < 18
+            when(age__lte=18)          # state["age"] <= 18
+            when(age__ne=0)            # state["age"] != 0
+            when(age__eq=18)           # state["age"] == 18  (explicit)
+
+        Membership operators::
+
+            when(status__in=["a", "b"])     # state["status"] in ["a", "b"]
+            when(status__notin=["x", "y"])  # state["status"] not in ["x", "y"]
+            when(tags__contains="python")   # "python" in state["tags"]
+
+        Identity operators::
+
+            when(value__is=None)            # state["value"] is None
+            when(value__isnot=None)         # state["value"] is not None
+
+        Multiple conditions are ANDed together::
+
+            when(age__gte=18, status="active")  # age >= 18 AND status == "active"
+
+        :param kwargs: Keyword arguments with optional ``__operator`` suffixes
+        :return: A condition that checks all specified constraints (AND)
         """
-        keys = list(kwargs.keys())
+        parsed = []
+        for kwarg_key, value in kwargs.items():
+            state_key, symbol, func, explicit = cls._parse_kwarg(kwarg_key, value)
+            parsed.append((state_key, symbol, func, value, explicit))
+
+        state_keys = list(dict.fromkeys(p[0] for p in parsed))
 
         def condition_func(state: State) -> bool:
-            for key, value in kwargs.items():
-                if state.get(key) != value:
+            for state_key, _symbol, func, value, _explicit in parsed:
+                if not func(state.get(state_key), value):
                     return False
             return True
 
-        name = f"{', '.join(f'{key}={value}' for key, value in sorted(kwargs.items()))}"
-        return Condition(keys, condition_func, name=name)
+        name_parts = []
+        for state_key, symbol, _func, value, explicit in sorted(parsed, key=lambda p: p[0]):
+            if not explicit:
+                # Backward-compatible format: key=value (no repr, no spaces)
+                name_parts.append(f"{state_key}={value}")
+            elif symbol.isalnum() or " " in symbol:
+                # Word operators like "in", "not in", "contains"
+                name_parts.append(f"{state_key} {symbol} {value!r}")
+            else:
+                # Symbol operators like >=, !=, etc.
+                name_parts.append(f"{state_key}{symbol}{value!r}")
+        name = ", ".join(name_parts)
+        return Condition(state_keys, condition_func, name=name)
 
     def __repr__(self):
         return f"condition: {self._name}"
@@ -440,6 +1061,7 @@ Condition.default = Condition([], lambda _: True, name="default")
 default = Condition.default
 when = Condition.when
 expr = Condition.expr
+safe_expr = Condition.safe_expr
 lmda = Condition.lmda
 # exists = Condition.exists
 
@@ -611,6 +1233,8 @@ class FunctionBasedAction(SingleStepAction):
         self._fn = fn
         self._reads = reads
         self._writes = writes
+        _validate_declared_reads(self._originating_fn, self._reads)
+
         self._bound_params = bound_params if bound_params is not None else {}
         self._inputs = (
             derive_inputs_from_fn(self._bound_params, self._fn)
@@ -1089,9 +1713,12 @@ class FunctionBasedStreamingAction(SingleStepStreamingAction):
         :param writes:
         """
         super(FunctionBasedStreamingAction, self).__init__()
+        self._originating_fn = originating_fn if originating_fn is not None else fn
         self._fn = fn
         self._reads = reads
         self._writes = writes
+        _validate_declared_reads(self._originating_fn, self._reads)
+
         self._bound_params = bound_params if bound_params is not None else {}
         self._inputs = (
             derive_inputs_from_fn(self._bound_params, self._fn)
@@ -1101,7 +1728,7 @@ class FunctionBasedStreamingAction(SingleStepStreamingAction):
                 [item for item in input_spec[1] if item not in self._bound_params],
             )
         )
-        self._originating_fn = originating_fn if originating_fn is not None else fn
+
         self._schema = schema
         self._tags = tags if tags is not None else []
 
@@ -1247,7 +1874,7 @@ class action:
             from burr.integrations.pydantic import pydantic_action
         except ImportError:
             raise ImportError(
-                "Please install pydantic to use the pydantic decorator. pip install burr[pydantic]"
+                "Please install pydantic to use the pydantic decorator. pip install apache-burr[pydantic]"
             )
 
         return pydantic_action(
@@ -1310,7 +1937,7 @@ class streaming_action:
             from burr.integrations.pydantic import pydantic_streaming_action
         except ImportError:
             raise ImportError(
-                "Please install pydantic to use the pydantic decorator. pip install 'burr[pydantic]'"
+                "Please install pydantic to use the pydantic decorator. pip install 'apache-burr[pydantic]'"
             )
 
         return pydantic_streaming_action(
@@ -1330,8 +1957,8 @@ class streaming_action:
         See the following example for how to use this decorator -- this reads ``prompt`` from the state and writes
         ``response`` back out, yielding all intermediate chunks.
 
-        Note that this *must* return a value. If it does not, we will not know how to update the state, and
-        we will error out.
+        Note that this *must* return a final value with a state update. If it does not, we will not know how to update the state, and
+        we will error out. Intermediate yields can be plain dicts (without a state update).
 
         .. code-block:: python
 
@@ -1350,7 +1977,7 @@ class streaming_action:
                     delta = chunk.choices[0].delta.content
                     buffer.append(delta)
                     # yield partial results
-                    yield {'response': delta}, None
+                    yield {'response': delta}
                 full_response = ''.join(buffer)
                 # return the final result
                 return {'response': full_response}, state.update(response=full_response)

@@ -1,23 +1,42 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 [build-system]
-requires = ["setuptools >= 61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
 
 [project]
-name = "burr"
-version = "0.40.2"
+name = "apache-burr"
+version = "0.43.0"
 dependencies = [] # yes, there are none
 requires-python = ">=3.9"
 authors = [
-  {name = "Elijah ben Izzy", email = "elijah@dagworks.io"},
-  {name = "Stefan Krawczyk", email = "stefan@dagworks.io"},
+  {name = "Elijah ben Izzy", email = "elijah@apache.org"},
+  {name = "Stefan Krawczyk", email = "stefan@apache.org"},
 ]
 maintainers = [
-  {name = "Elijah ben Izzy", email = "elijah@dagworks.io"},
-  {name = "Stefan Krawczyk", email = "stefan@dagworks.io"},
+  {name = "Elijah ben Izzy", email = "elijah@apache.org"},
+  {name = "Stefan Krawczyk", email = "stefan@apache.org"},
+  {name = "Jernej Frank", email = "jernejfrank@apache.org"},
+  {name = "André Ahlert", email = "andre@aex.partners"},
 ]
-description = "A state machine for data projects"
+description = "Apache Burr (incubating) makes it easy to develop applications that make decisions (chatbots, agents, simulations, etc...) from simple python building blocks."
 readme = "README.md"
-#license = {file = "LICENSE.txt"}
+license-files = ["LICENSE-wheel", "NOTICE", "DISCLAIMER"]
 keywords = ["mlops", "data", "state-machine", "llmops"]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -64,49 +83,59 @@ redis = [
   "redis"
 ]
 
+release = [
+  "jinja2",
+]
+
 tests = [
   "pytest",
   "pytest-asyncio",
-  "burr[hamilton]",
-  "burr[hamilton]",
+  "apache-burr[hamilton]",
   "langchain_core",
   "langchain_community",
   "pandas",
-  "pydantic[email]",
+  "pydantic[email]>=2.0",
   "pyarrow",
-  "burr[aiosqlite]",
-  "burr[asyncpg]",
-  "burr[psycopg2]",
-  "burr[pymongo]",
-  "burr[redis]",
-  "burr[opentelemetry]",
-  "burr[haystack]",
-  "burr[ray]"
+  "apache-burr[aiosqlite]",
+  "apache-burr[asyncpg]",
+  "apache-burr[psycopg2]",
+  "apache-burr[pymongo]",
+  "apache-burr[redis]",
+  "apache-burr[opentelemetry]",
+  "apache-burr[langfuse]",
+  "apache-burr[haystack]",
+  "apache-burr[ray]"
 ]
 
 documentation = [
-  "burr[tests]",
-  "sphinx",
+  "apache-burr[tests]",
+  "apache-burr[bedrock]",
+  "sphinx<9",
   "sphinx-autobuild",
   "myst-nb",
   "furo",
   "sphinx-sitemap",
   "sphinx-toolbox",
-  "burr[aiosqlite]",
-  "burr[asyncpg]",
-  "burr[psycopg2]",
-  "burr[pymongo]",
-  "burr[redis]",
-  "burr[ray]",
+  "apache-burr[aiosqlite]",
+  "apache-burr[asyncpg]",
+  "apache-burr[psycopg2]",
+  "apache-burr[pymongo]",
+  "apache-burr[redis]",
+  "apache-burr[ray]",
+  "apache-burr[streamlit]",
   "sphinxcontrib-googleanalytics"
 ]
 
 tracking-client = [
-  "pydantic>1"
+  "pydantic>=2.0"
 ]
 
 tracking-client-s3 = [
-  "burr[tracking-client]",
+  "apache-burr[tracking-client]",
+  "boto3"
+]
+
+bedrock = [
   "boto3"
 ]
 
@@ -115,7 +144,7 @@ tracking-server-s3 = [
   "aiobotocore",
   "fastapi",
   "tortoise-orm[accel, asyncmy]",
-  "burr[tracking-server]",
+  "apache-burr[tracking-server]",
   "typing-inspect"
 ]
 
@@ -123,7 +152,7 @@ tracking-server = [
   "click",
   "fastapi",
   "uvicorn",
-  "pydantic",
+  "pydantic>=2.0",
   "pydantic-settings",
   "fastapi-pagination",
   "fastapi-utils",
@@ -135,7 +164,7 @@ tracking-server = [
 ]
 
 pydantic = [
-  "pydantic"
+  "pydantic>=2.0"
 ]
 
 haystack = [
@@ -149,16 +178,16 @@ cli = [
 ]
 
 tracking = [
-  "burr[tracking-client]",
-  "burr[tracking-server]",
+  "apache-burr[tracking-client]",
+  "apache-burr[tracking-server]",
 ]
 
 learn = [
-  "burr[tracking,streamlit,graphviz,hamilton,cli,inappexamples]"
+  "apache-burr[tracking,streamlit,graphviz,hamilton,cli,inappexamples]"
 ]
 
 start = [
-  "burr[learn]"
+  "apache-burr[learn]"
 ]
 inappexamples  = [
   "opentelemetry-api",
@@ -175,20 +204,21 @@ examples = [
   "langchain",
   "langchain-community",
   "langchain-openai",
-  "burr[inappexamples]"
+  "apache-burr[inappexamples]"
 ]
 
 # just install everything for developers
 developer = [
-  "burr[streamlit]",
-  "burr[graphviz]",
-  "burr[tracking]",
-  "burr[tests]",
-  "burr[documentation]",
-  "burr[bloat]",
+  "apache-burr[streamlit]",
+  "apache-burr[graphviz]",
+  "apache-burr[tracking]",
+  "apache-burr[tests]",
+  "apache-burr[documentation]",
+  "apache-burr[examples]",
   "build",
   "twine",
   "pre-commit",
+  "tomli; python_version < '3.11'",
 ]
 
 opentelemetry = [
@@ -196,34 +226,24 @@ opentelemetry = [
   "opentelemetry-sdk",
 ]
 
+langfuse = [
+  "langfuse>=3.0.0",
+  "apache-burr[opentelemetry]",
+]
+
 ray = [
   "ray[default]"
 ]
-
-[tool.setuptools]
-include-package-data = true
-
-[tool.setuptools.packages.find]
-include = ["burr", "burr.*"]
-
-# we need to ensure this is there...
-[tool.setuptools.package-data]
-burr = [
-  "burr/tracking/server/build/**/*",
-  "burr/tracking/server/demo_data/**/*",
-  "py.typed",
-]
-
 
 [tool.aerich]
 tortoise_orm = "burr.tracking.server.s3.settings.TORTOISE_ORM"
 location = "./burr/tracking/server/s3/migrations"
 src_folder = "./."
 [project.urls]
-Homepage = "https://github.com/dagworks-inc/burr"
-Documentation = "https://github.com/dagworks-inc/burr"
-Repository = "https://github.com/dagworks-inc/burr"
-"Bug Tracker" = "https://github.com/dagworks-inc/burr"
+Homepage = "https://github.com/apache/burr"
+Documentation = "https://github.com/apache/burr"
+Repository = "https://github.com/apache/burr"
+"Bug Tracker" = "https://github.com/apache/burr"
 
 [project.scripts]
 burr = "burr.cli.__main__:cli_run_server"
@@ -233,3 +253,88 @@ burr-admin-publish = "burr.cli.__main__:cli_build_and_publish"
 burr-admin-build-ui = "burr.cli.__main__:cli_build_ui"
 burr-admin-generate-demo-data = "burr.cli.__main__:cli_generate_demo_data"
 burr-test-case = "burr.cli.__main__:cli_test_case"
+
+[dependency-groups]
+dev = [
+  "apache-burr[cli]",
+  "flit",
+]
+
+[tool.flit.module]
+name = "burr"
+
+
+[tool.flit.sdist]
+include = [
+  "LICENSE",
+  "NOTICE",
+  "DISCLAIMER",
+  "LICENSE-wheel",
+  "scripts/**",
+  "telemetry/ui/**",
+  "examples/__init__.py",
+  "examples/email-assistant/**",
+  "examples/multi-modal-chatbot/**",
+  "examples/streaming-fastapi/**",
+  "examples/deep-researcher/**",
+  "examples/hello-world-counter/**",
+]
+exclude = [
+  # burr-redirect: non-ASF PyPI redirect package, not part of the ASF source release.
+  "burr-redirect/**",
+  "telemetry/ui/node_modules/**",
+  "telemetry/ui/build/**",
+  "telemetry/ui/dist/**",
+  "telemetry/ui/.cache/**",
+  "telemetry/ui/.next/**",
+  "**/__pycache__/**",
+  "**/*.pyc",
+  ".git/**",
+  ".github/**",
+  "docs/**",
+  "website/**",
+  # Exclude VCS and system files
+  ".gitignore",
+  ".gitmodules",
+  "**/.gitignore",
+  "**/.DS_Store",
+  # Exclude unwanted examples - flit auto-includes examples/ as a package because of __init__.py,
+  # and exclude patterns take precedence over include patterns. We must explicitly exclude each
+  # unwanted example directory. Only email-assistant, multi-modal-chatbot, streaming-fastapi,
+  # and deep-researcher should be included (see include list above).
+  # NOTE: If you add/remove examples, update this list AND tests/test_release_config.py
+  "examples/README.md",
+  "examples/validate_examples.py",
+  "examples/fastapi_mount_example.py",
+  "examples/adaptive-crag/**",
+  "examples/conversational-rag/**",
+  "examples/custom-serde/**",
+  "examples/deployment/**",
+  "examples/hamilton-integration/**",
+  "examples/haystack-integration/**",
+  "examples/image-telephone/**",
+  "examples/instructor-gemini-flash/**",
+  "examples/integrations/**",
+  "examples/llm-adventure-game/**",
+  "examples/ml-training/**",
+  "examples/multi-agent-collaboration/**",
+  "examples/openai-compatible-agent/**",
+  "examples/opentelemetry/**",
+  "examples/other-examples/**",
+  "examples/parallelism/**",
+  "examples/pytest/**",
+  "examples/rag-lancedb-ingestion/**",
+  "examples/ray/**",
+  "examples/recursive/**",
+  "examples/simple-chatbot-intro/**",
+  "examples/simulation/**",
+  "examples/streaming-overview/**",
+  "examples/talks/**",
+  "examples/templates/**",
+  "examples/test-case-creation/**",
+  "examples/tool-calling/**",
+  "examples/tracing-and-spans/**",
+  "examples/typed-state/**",
+  "examples/web-server/**",
+  "examples/youtube-to-social-media-post/**",
+]

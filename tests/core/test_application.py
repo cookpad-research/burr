@@ -1,3 +1,20 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 import asyncio
 import collections
 import datetime
@@ -40,14 +57,18 @@ from burr.core.application import (
     _run_reducer,
     _run_single_step_action,
     _run_single_step_streaming_action,
+    _validate_reducer_writes,
     _validate_start,
 )
 from burr.core.graph import Graph, GraphBuilder, Transition
 from burr.core.persistence import (
     AsyncDevNullPersister,
+    AsyncInMemoryPersister,
+    BaseStateLoader,
     BaseStatePersister,
     DevNullPersister,
     PersistedStateData,
+    PersisterHookAsync,
     SQLLitePersister,
 )
 from burr.core.typing import TypingSystem
@@ -469,6 +490,48 @@ def test__run_reducer_deletes_state():
     assert "count" not in state
 
 
+def test__validate_reducer_writes_with_state_keys_returning_list():
+    """Tests that _validate_reducer_writes works when state.keys() returns a list.
+
+    This is a regression test for a bug where state.keys() could return a list
+    instead of a set, causing a TypeError when trying to do set subtraction.
+    """
+    # Create a reducer with some expected writes
+    reducer = PassedInAction(
+        reads=["input"],
+        writes=["output", "result"],
+        fn=...,
+        update_fn=lambda result, state: state.update(**result),
+        inputs=[],
+    )
+
+    # Create a state that has all the required writes
+    state = State({"input": 1, "output": 2, "result": 3})
+
+    # This should not raise a TypeError even if state.keys() returns a list
+    # (which was the original bug)
+    _validate_reducer_writes(reducer, state, "test_action")
+
+
+def test__validate_reducer_writes_raises_on_missing_keys():
+    """Tests that _validate_reducer_writes raises ValueError when required keys are missing."""
+    # Create a reducer with some expected writes
+    reducer = PassedInAction(
+        reads=["input"],
+        writes=["output", "result", "missing_key"],
+        fn=...,
+        update_fn=lambda result, state: state.update(**result),
+        inputs=[],
+    )
+
+    # Create a state that is missing some required writes
+    state = State({"input": 1, "output": 2, "result": 3})
+
+    # This should raise a ValueError for missing "missing_key"
+    with pytest.raises(ValueError, match="missing_key"):
+        _validate_reducer_writes(reducer, state, "test_action")
+
+
 async def test__arun_function():
     """Tests that we can run an async function"""
     action = base_counter_action_async
@@ -569,7 +632,12 @@ def test_run_single_step_streaming_action_errors_missing_write():
     state = State()
     with pytest.raises(ValueError, match="missing_value"):
         gen = _run_single_step_streaming_action(
-            action, state, inputs={}, sequence_id=0, partition_key="partition_key", app_id="app_id"
+            action,
+            state,
+            inputs={},
+            sequence_id=0,
+            partition_key="partition_key",
+            app_id="app_id",
         )
         collections.deque(gen, maxlen=0)  # exhaust the generator
 
@@ -626,7 +694,12 @@ def test_run_multi_step_streaming_action_errors_missing_write():
     state = State()
     with pytest.raises(ValueError, match="missing_value"):
         gen = _run_multi_step_streaming_action(
-            action, state, inputs={}, sequence_id=0, partition_key="partition_key", app_id="app_id"
+            action,
+            state,
+            inputs={},
+            sequence_id=0,
+            partition_key="partition_key",
+            app_id="app_id",
         )
         collections.deque(gen, maxlen=0)  # exhaust the generator
 
@@ -756,6 +829,25 @@ class SingleStepStreamingCounter(SingleStepStreamingAction):
         return ["count", "tracker"]
 
 
+class SingleStepStreamingCounterYieldsDict(SingleStepStreamingAction):
+    def stream_run_and_update(
+        self, state: State, **run_kwargs
+    ) -> Generator[Tuple[dict, Optional[State]], None, None]:
+        steps_per_count = run_kwargs.get("granularity", 10)
+        count = state["count"]
+        for i in range(steps_per_count):
+            yield {"count": count + ((i + 1) / 10)}
+        yield {"count": count + 1}, state.update(count=count + 1).append(tracker=count + 1)
+
+    @property
+    def reads(self) -> list[str]:
+        return ["count"]
+
+    @property
+    def writes(self) -> list[str]:
+        return ["count", "tracker"]
+
+
 class SingleStepStreamingCounterAsync(SingleStepStreamingAction):
     async def stream_run_and_update(
         self, state: State, **run_kwargs
@@ -765,6 +857,27 @@ class SingleStepStreamingCounterAsync(SingleStepStreamingAction):
         for i in range(steps_per_count):
             await asyncio.sleep(0.01)
             yield {"count": count + ((i + 1) / 10)}, None
+        await asyncio.sleep(0.01)
+        yield {"count": count + 1}, state.update(count=count + 1).append(tracker=count + 1)
+
+    @property
+    def reads(self) -> list[str]:
+        return ["count"]
+
+    @property
+    def writes(self) -> list[str]:
+        return ["count", "tracker"]
+
+
+class SingleStepStreamingCounterYieldsDictAsync(SingleStepStreamingAction):
+    async def stream_run_and_update(
+        self, state: State, **run_kwargs
+    ) -> AsyncGenerator[Tuple[dict, Optional[State]], None]:
+        steps_per_count = run_kwargs.get("granularity", 10)
+        count = state["count"]
+        for i in range(steps_per_count):
+            await asyncio.sleep(0.01)
+            yield {"count": count + ((i + 1) / 10)}
         await asyncio.sleep(0.01)
         yield {"count": count + 1}, state.update(count=count + 1).append(tracker=count + 1)
 
@@ -944,13 +1057,18 @@ def test__run_multistep_streaming_action():
     action = base_streaming_counter.with_name("counter")
     state = State({"count": 0, "tracker": []})
     generator = _run_multi_step_streaming_action(
-        action, state, inputs={}, sequence_id=0, partition_key="partition_key", app_id="app_id"
+        action,
+        state,
+        inputs={},
+        sequence_id=0,
+        partition_key="partition_key",
+        app_id="app_id",
     )
     last_result = -1
     result = None
     for result, state in generator:
         if last_result < 1:
-            # Otherwise you hit floating poit comparison problems
+            # Otherwise you hit floating point comparison problems
             assert result["count"] > last_result
         last_result = result["count"]
     assert result == {"count": 1}
@@ -982,7 +1100,7 @@ def test__run_multistep_streaming_action_callbacks():
     result = None
     for result, state in generator:
         if last_result < 1:
-            # Otherwise you hit floating poit comparison problems
+            # Otherwise you hit floating point comparison problems
             assert result["count"] > last_result
         last_result = result["count"]
     assert result == {"count": 1}
@@ -1006,7 +1124,7 @@ async def test__run_multistep_streaming_action_async():
     result = None
     async for result, state in generator:
         if last_result < 1:
-            # Otherwise you hit floating poit comparison problems
+            # Otherwise you hit floating point comparison problems
             assert result["count"] > last_result
         last_result = result["count"]
     assert result == {"count": 1}
@@ -1037,7 +1155,7 @@ async def test__run_multistep_streaming_action_async_callbacks():
     result = None
     async for result, state in generator:
         if last_result < 1:
-            # Otherwise you hit floating poit comparison problems
+            # Otherwise you hit floating point comparison problems
             assert result["count"] > last_result
         last_result = result["count"]
     assert result == {"count": 1}
@@ -1050,7 +1168,12 @@ def test__run_streaming_action_incorrect_result_type():
     state = State()
     with pytest.raises(ValueError, match="returned a non-dict"):
         gen = _run_multi_step_streaming_action(
-            action, state, inputs={}, sequence_id=0, partition_key="partition_key", app_id="app_id"
+            action,
+            state,
+            inputs={},
+            sequence_id=0,
+            partition_key="partition_key",
+            app_id="app_id",
         )
         collections.deque(gen, maxlen=0)  # exhaust the generator
 
@@ -1107,7 +1230,12 @@ def test__run_single_step_streaming_action():
     action = base_streaming_single_step_counter.with_name("counter")
     state = State({"count": 0, "tracker": []})
     generator = _run_single_step_streaming_action(
-        action, state, inputs={}, sequence_id=0, partition_key="partition_key", app_id="app_id"
+        action,
+        state,
+        inputs={},
+        sequence_id=0,
+        partition_key="partition_key",
+        app_id="app_id",
     )
     last_result = -1
     result, state = None, None
@@ -1119,6 +1247,60 @@ def test__run_single_step_streaming_action():
         last_result = result["count"]
     assert result == {"count": 1}
     assert state.subset("count", "tracker").get_all() == {"count": 1, "tracker": [1]}
+
+
+def test__run_single_step_streaming_action_yields_dict():
+    action = SingleStepStreamingCounterYieldsDict().with_name("counter")
+    state = State({"count": 0, "tracker": []})
+    generator = _run_single_step_streaming_action(
+        action,
+        state,
+        inputs={},
+        sequence_id=0,
+        partition_key="partition_key",
+        app_id="app_id",
+    )
+    last_result = -1
+    result, state = None, None
+    for result, state in generator:
+        if last_result < 1:
+            assert result["count"] > last_result
+        last_result = result["count"]
+    assert result == {"count": 1}
+    assert state.subset("count", "tracker").get_all() == {"count": 1, "tracker": [1]}
+
+
+def test__run_single_step_streaming_action_yields_dict_calls_callbacks():
+    action = SingleStepStreamingCounterYieldsDict().with_name("counter")
+
+    class TrackingCallback(PostStreamItemHook):
+        def __init__(self):
+            self.items = []
+
+        def post_stream_item(self, item: Any, **future_kwargs: Any):
+            self.items.append(item)
+
+    hook = TrackingCallback()
+
+    state = State({"count": 0, "tracker": []})
+    generator = _run_single_step_streaming_action(
+        action,
+        state,
+        inputs={},
+        sequence_id=0,
+        partition_key="partition_key",
+        app_id="app_id",
+        lifecycle_adapters=LifecycleAdapterSet(hook),
+    )
+    last_result = -1
+    result, state = None, None
+    for result, state in generator:
+        if last_result < 1:
+            assert result["count"] > last_result
+        last_result = result["count"]
+    assert result == {"count": 1}
+    assert state.subset("count", "tracker").get_all() == {"count": 1, "tracker": [1]}
+    assert len(hook.items) == 10
 
 
 def test__run_single_step_streaming_action_calls_callbacks():
@@ -1180,6 +1362,60 @@ async def test__run_single_step_streaming_action_async():
     assert state.subset("count", "tracker").get_all() == {"count": 1, "tracker": [1]}
 
 
+async def test__run_single_step_streaming_action_yields_dict_async():
+    async_action = SingleStepStreamingCounterYieldsDictAsync().with_name("counter")
+    state = State({"count": 0, "tracker": []})
+    generator = _arun_single_step_streaming_action(
+        action=async_action,
+        state=state,
+        inputs={},
+        sequence_id=0,
+        app_id="app_id",
+        partition_key="partition_key",
+        lifecycle_adapters=LifecycleAdapterSet(),
+    )
+    last_result = -1
+    result, state = None, None
+    async for result, state in generator:
+        if last_result < 1:
+            assert result["count"] > last_result
+        last_result = result["count"]
+    assert result == {"count": 1}
+    assert state.subset("count", "tracker").get_all() == {"count": 1, "tracker": [1]}
+
+
+async def test__run_single_step_streaming_action_yields_dict_async_callbacks():
+    class TrackingCallback(PostStreamItemHookAsync):
+        def __init__(self):
+            self.items = []
+
+        async def post_stream_item(self, item: Any, **future_kwargs: Any):
+            self.items.append(item)
+
+    hook = TrackingCallback()
+
+    async_action = SingleStepStreamingCounterYieldsDictAsync().with_name("counter")
+    state = State({"count": 0, "tracker": []})
+    generator = _arun_single_step_streaming_action(
+        action=async_action,
+        state=state,
+        inputs={},
+        sequence_id=0,
+        app_id="app_id",
+        partition_key="partition_key",
+        lifecycle_adapters=LifecycleAdapterSet(hook),
+    )
+    last_result = -1
+    result, state = None, None
+    async for result, state in generator:
+        if last_result < 1:
+            assert result["count"] > last_result
+        last_result = result["count"]
+    assert result == {"count": 1}
+    assert state.subset("count", "tracker").get_all() == {"count": 1, "tracker": [1]}
+    assert len(hook.items) == 10
+
+
 async def test__run_single_step_streaming_action_async_callbacks():
     class TrackingCallback(PostStreamItemHookAsync):
         def __init__(self):
@@ -1212,6 +1448,328 @@ async def test__run_single_step_streaming_action_async_callbacks():
     assert result == {"count": 1}
     assert state.subset("count", "tracker").get_all() == {"count": 1, "tracker": [1]}
     assert len(hook.items) == 10  # one for each streaming callback
+
+
+class SingleStepStreamingCounterWithException(SingleStepStreamingAction):
+    """Yields intermediate items, raises, then yields final state in finally block."""
+
+    def stream_run_and_update(
+        self, state: State, **run_kwargs
+    ) -> Generator[Tuple[dict, Optional[State]], None, None]:
+        count = state["count"]
+        try:
+            for i in range(3):
+                yield {"count": count + ((i + 1) / 10)}, None
+            raise RuntimeError("simulated failure")
+        finally:
+            yield {"count": count + 1}, state.update(count=count + 1).append(tracker=count + 1)
+
+    @property
+    def reads(self) -> list[str]:
+        return ["count"]
+
+    @property
+    def writes(self) -> list[str]:
+        return ["count", "tracker"]
+
+
+class SingleStepStreamingCounterWithExceptionNoState(SingleStepStreamingAction):
+    """Raises without ever yielding a final state update."""
+
+    def stream_run_and_update(
+        self, state: State, **run_kwargs
+    ) -> Generator[Tuple[dict, Optional[State]], None, None]:
+        count = state["count"]
+        for i in range(3):
+            yield {"count": count + ((i + 1) / 10)}, None
+        raise RuntimeError("simulated failure with no state")
+
+    @property
+    def reads(self) -> list[str]:
+        return ["count"]
+
+    @property
+    def writes(self) -> list[str]:
+        return ["count", "tracker"]
+
+
+class SingleStepStreamingCounterWithExceptionAsync(SingleStepStreamingAction):
+    """Async variant: yields intermediate items, raises, then yields final state in finally."""
+
+    async def stream_run_and_update(
+        self, state: State, **run_kwargs
+    ) -> AsyncGenerator[Tuple[dict, Optional[State]], None]:
+        count = state["count"]
+        try:
+            for i in range(3):
+                yield {"count": count + ((i + 1) / 10)}, None
+            raise RuntimeError("simulated failure")
+        finally:
+            yield {"count": count + 1}, state.update(count=count + 1).append(tracker=count + 1)
+
+    @property
+    def reads(self) -> list[str]:
+        return ["count"]
+
+    @property
+    def writes(self) -> list[str]:
+        return ["count", "tracker"]
+
+
+class SingleStepStreamingCounterWithExceptionNoStateAsync(SingleStepStreamingAction):
+    """Async variant: raises without ever yielding a final state update."""
+
+    async def stream_run_and_update(
+        self, state: State, **run_kwargs
+    ) -> AsyncGenerator[Tuple[dict, Optional[State]], None]:
+        count = state["count"]
+        for i in range(3):
+            yield {"count": count + ((i + 1) / 10)}, None
+        raise RuntimeError("simulated failure with no state")
+
+    @property
+    def reads(self) -> list[str]:
+        return ["count"]
+
+    @property
+    def writes(self) -> list[str]:
+        return ["count", "tracker"]
+
+
+class MultiStepStreamingCounterWithException(StreamingAction):
+    """Yields intermediate items, raises, then yields final result in finally block."""
+
+    def stream_run(self, state: State, **run_kwargs) -> Generator[dict, None, None]:
+        count = state["count"]
+        try:
+            for i in range(3):
+                yield {"count": count + ((i + 1) / 10)}
+            raise RuntimeError("simulated failure")
+        finally:
+            yield {"count": count + 1}
+
+    @property
+    def reads(self) -> list[str]:
+        return ["count"]
+
+    @property
+    def writes(self) -> list[str]:
+        return ["count", "tracker"]
+
+    def update(self, result: dict, state: State) -> State:
+        return state.update(**result).append(tracker=result["count"])
+
+
+class MultiStepStreamingCounterWithExceptionNoResult(StreamingAction):
+    """Raises without ever yielding any item."""
+
+    def stream_run(self, state: State, **run_kwargs) -> Generator[dict, None, None]:
+        raise RuntimeError("simulated failure with no result")
+        yield  # make this a generator function
+
+    @property
+    def reads(self) -> list[str]:
+        return ["count"]
+
+    @property
+    def writes(self) -> list[str]:
+        return ["count", "tracker"]
+
+    def update(self, result: dict, state: State) -> State:
+        return state.update(**result).append(tracker=result["count"])
+
+
+class MultiStepStreamingCounterWithExceptionAsync(AsyncStreamingAction):
+    """Async variant: yields intermediate items, raises, then yields final result in finally."""
+
+    async def stream_run(self, state: State, **run_kwargs) -> AsyncGenerator[dict, None]:
+        count = state["count"]
+        try:
+            for i in range(3):
+                yield {"count": count + ((i + 1) / 10)}
+            raise RuntimeError("simulated failure")
+        finally:
+            yield {"count": count + 1}
+
+    @property
+    def reads(self) -> list[str]:
+        return ["count"]
+
+    @property
+    def writes(self) -> list[str]:
+        return ["count", "tracker"]
+
+    def update(self, result: dict, state: State) -> State:
+        return state.update(**result).append(tracker=result["count"])
+
+
+class MultiStepStreamingCounterWithExceptionNoResultAsync(AsyncStreamingAction):
+    """Async variant: raises without ever yielding any item."""
+
+    async def stream_run(self, state: State, **run_kwargs) -> AsyncGenerator[dict, None]:
+        raise RuntimeError("simulated failure with no result")
+        yield  # make this an async generator
+
+    @property
+    def reads(self) -> list[str]:
+        return ["count"]
+
+    @property
+    def writes(self) -> list[str]:
+        return ["count", "tracker"]
+
+    def update(self, result: dict, state: State) -> State:
+        return state.update(**result).append(tracker=result["count"])
+
+
+def test__run_single_step_streaming_action_graceful_exception():
+    """When the generator raises but yields a final state in finally, stream completes gracefully."""
+    action = SingleStepStreamingCounterWithException().with_name("counter")
+    state = State({"count": 0, "tracker": []})
+    generator = _run_single_step_streaming_action(
+        action, state, inputs={}, sequence_id=0, partition_key="pk", app_id="app"
+    )
+    results = list(generator)
+    intermediate = [(r, s) for r, s in results if s is None]
+    final = [(r, s) for r, s in results if s is not None]
+    assert len(intermediate) == 3
+    assert len(final) == 1
+    assert final[0][0] == {"count": 1}
+    assert final[0][1].subset("count", "tracker").get_all() == {
+        "count": 1,
+        "tracker": [1],
+    }
+
+
+def test__run_single_step_streaming_action_exception_propagates():
+    """When the generator raises without yielding a final state, exception propagates."""
+    action = SingleStepStreamingCounterWithExceptionNoState().with_name("counter")
+    state = State({"count": 0, "tracker": []})
+    generator = _run_single_step_streaming_action(
+        action, state, inputs={}, sequence_id=0, partition_key="pk", app_id="app"
+    )
+    with pytest.raises(RuntimeError, match="simulated failure with no state"):
+        list(generator)
+
+
+async def test__run_single_step_streaming_action_graceful_exception_async():
+    """Async: when the generator raises but yields a final state in finally, stream completes."""
+    action = SingleStepStreamingCounterWithExceptionAsync().with_name("counter")
+    state = State({"count": 0, "tracker": []})
+    generator = _arun_single_step_streaming_action(
+        action=action,
+        state=state,
+        inputs={},
+        sequence_id=0,
+        app_id="app",
+        partition_key="pk",
+        lifecycle_adapters=LifecycleAdapterSet(),
+    )
+    results = []
+    async for item in generator:
+        results.append(item)
+    intermediate = [(r, s) for r, s in results if s is None]
+    final = [(r, s) for r, s in results if s is not None]
+    assert len(intermediate) == 3
+    assert len(final) == 1
+    assert final[0][0] == {"count": 1}
+    assert final[0][1].subset("count", "tracker").get_all() == {
+        "count": 1,
+        "tracker": [1],
+    }
+
+
+async def test__run_single_step_streaming_action_exception_propagates_async():
+    """Async: when the generator raises without yielding a final state, exception propagates."""
+    action = SingleStepStreamingCounterWithExceptionNoStateAsync().with_name("counter")
+    state = State({"count": 0, "tracker": []})
+    generator = _arun_single_step_streaming_action(
+        action=action,
+        state=state,
+        inputs={},
+        sequence_id=0,
+        app_id="app",
+        partition_key="pk",
+        lifecycle_adapters=LifecycleAdapterSet(),
+    )
+    with pytest.raises(RuntimeError, match="simulated failure with no state"):
+        async for _ in generator:
+            pass
+
+
+def test__run_multi_step_streaming_action_graceful_exception():
+    """When the generator raises but yields a final result in finally, stream completes."""
+    action = MultiStepStreamingCounterWithException().with_name("counter")
+    state = State({"count": 0, "tracker": []})
+    generator = _run_multi_step_streaming_action(
+        action, state, inputs={}, sequence_id=0, partition_key="pk", app_id="app"
+    )
+    results = list(generator)
+    intermediate = [(r, s) for r, s in results if s is None]
+    final = [(r, s) for r, s in results if s is not None]
+    assert len(intermediate) == 3
+    assert len(final) == 1
+    assert final[0][0] == {"count": 1}
+    assert final[0][1].subset("count", "tracker").get_all() == {
+        "count": 1,
+        "tracker": [1],
+    }
+
+
+def test__run_multi_step_streaming_action_exception_propagates():
+    """When the generator raises without yielding any result, exception propagates."""
+    action = MultiStepStreamingCounterWithExceptionNoResult().with_name("counter")
+    state = State({"count": 0, "tracker": []})
+    generator = _run_multi_step_streaming_action(
+        action, state, inputs={}, sequence_id=0, partition_key="pk", app_id="app"
+    )
+    with pytest.raises(RuntimeError, match="simulated failure with no result"):
+        list(generator)
+
+
+async def test__run_multi_step_streaming_action_graceful_exception_async():
+    """Async: when the generator raises but yields a final result in finally, stream completes."""
+    action = MultiStepStreamingCounterWithExceptionAsync().with_name("counter")
+    state = State({"count": 0, "tracker": []})
+    generator = _arun_multi_step_streaming_action(
+        action=action,
+        state=state,
+        inputs={},
+        sequence_id=0,
+        app_id="app",
+        partition_key="pk",
+        lifecycle_adapters=LifecycleAdapterSet(),
+    )
+    results = []
+    async for item in generator:
+        results.append(item)
+    intermediate = [(r, s) for r, s in results if s is None]
+    final = [(r, s) for r, s in results if s is not None]
+    assert len(intermediate) == 3
+    assert len(final) == 1
+    assert final[0][0] == {"count": 1}
+    assert final[0][1].subset("count", "tracker").get_all() == {
+        "count": 1,
+        "tracker": [1],
+    }
+
+
+async def test__run_multi_step_streaming_action_exception_propagates_async():
+    """Async: when the generator raises without yielding any result, exception propagates."""
+    action = MultiStepStreamingCounterWithExceptionNoResultAsync().with_name("counter")
+    state = State({"count": 0, "tracker": []})
+    generator = _arun_multi_step_streaming_action(
+        action=action,
+        state=state,
+        inputs={},
+        sequence_id=0,
+        app_id="app",
+        partition_key="pk",
+        lifecycle_adapters=LifecycleAdapterSet(),
+    )
+    with pytest.raises(RuntimeError, match="simulated failure with no result"):
+        async for _ in generator:
+            pass
 
 
 class SingleStepActionWithDeletionAsync(SingleStepActionWithDeletion):
@@ -1342,6 +1900,60 @@ async def test_app_astep():
     assert action.name == "counter_async"
     assert result == {"count": 1}
     assert state[PRIOR_STEP] == "counter_async"  # internal contract, not part of the public API
+
+
+async def test_app_astep_sync_action_persists_executed_state():
+    persister = AsyncInMemoryPersister()
+    tracker = ActionTrackerAsync()
+    counter_action = base_counter_action.with_name("counter")
+    app = await (
+        ApplicationBuilder()
+        .with_actions(counter_action)
+        .with_transitions()
+        .with_entrypoint("counter")
+        .with_state(count=0)
+        .with_identifiers(app_id="app", partition_key="pk")
+        .with_hooks(PersisterHookAsync(persister), tracker)
+        .abuild()
+    )
+
+    action, result, state = await app.astep()
+
+    persisted_state = await persister.load("pk", "app")
+    assert action.name == "counter"
+    assert result == {"count": 1}
+    assert state["count"] == 1
+    assert app.state["count"] == 1
+    assert tracker.post_called[0][1]["result"] == {"count": 1}
+    assert tracker.post_called[0][1]["state"]["count"] == 1
+    assert tracker.post_called[0][1]["exception"] is None
+    assert persisted_state["state"]["count"] == 1
+    assert persisted_state["status"] == "completed"
+
+
+async def test_app_astep_sync_single_step_action_persists_executed_state():
+    persister = AsyncInMemoryPersister()
+    counter_action = base_single_step_counter.with_name("counter")
+    app = await (
+        ApplicationBuilder()
+        .with_actions(counter_action)
+        .with_transitions()
+        .with_entrypoint("counter")
+        .with_state(count=0, tracker=[])
+        .with_identifiers(app_id="app", partition_key="pk")
+        .with_hooks(PersisterHookAsync(persister))
+        .abuild()
+    )
+
+    _, result, state = await app.astep()
+
+    persisted_state = await persister.load("pk", "app")
+    assert result == {"count": 1}
+    assert state["count"] == 1
+    assert state["tracker"] == [1]
+    assert persisted_state["state"]["count"] == 1
+    assert persisted_state["state"]["tracker"] == [1]
+    assert persisted_state["status"] == "completed"
 
 
 def test_app_step_context():
@@ -1573,7 +2185,7 @@ def test_iterate_with_inputs():
     )
     gen = app.iterate(
         halt_after=["result"], inputs={"additional_increment": 10}
-    )  # make it go quicly to the end
+    )  # make it go quickly to the end
     while True:
         try:
             action, result, state = next(gen)
@@ -1874,7 +2486,11 @@ async def test_app_a_run_async_and_sync():
         graph=Graph(
             actions=[counter_action_sync, counter_action_async, result_action],
             transitions=[
-                Transition(counter_action_sync, counter_action_async, Condition.expr("count < 20")),
+                Transition(
+                    counter_action_sync,
+                    counter_action_async,
+                    Condition.expr("count < 20"),
+                ),
                 Transition(counter_action_async, counter_action_sync, default),
                 Transition(counter_action_sync, result_action, default),
             ],
@@ -1999,7 +2615,8 @@ async def test_astream_result_halt_after_unique_ordered_sequence_id():
 
 def test_stream_result_halt_after_run_through_streaming():
     """Tests that we can pass through streaming results,
-    fully realize them, then get to the streaming results at the end and return the stream"""
+    fully realize them, then get to the streaming results at the end and return the stream
+    """
     action_tracker = CallCaptureTracker()
     stream_event_tracker = StreamEventCaptureTracker()
     counter_action = base_streaming_single_step_counter.with_name("counter")
@@ -2365,7 +2982,7 @@ def test_stream_result_halt_after_run_through_final_non_streaming():
     )
     action, streaming_container = app.stream_result(halt_after=["counter_final_non_streaming"])
     results = list(streaming_container)
-    assert len(results) == 0  # nothing to steram
+    assert len(results) == 0  # nothing to stream
     result, state = streaming_container.get()
     assert result["count"] == state["count"] == 11
     assert len(action_tracker.pre_called) == 11
@@ -2459,7 +3076,7 @@ def test_stream_result_halt_before():
     )
     action, streaming_container = app.stream_result(halt_after=[], halt_before=["counter_final"])
     results = list(streaming_container)
-    assert len(results) == 0  # nothing to steram
+    assert len(results) == 0  # nothing to stream
     result, state = streaming_container.get()
     assert action.name == "counter_final"  # halt before this one
     assert result is None
@@ -2604,7 +3221,10 @@ def test__adjust_single_step_output_result_and_state():
 
 def test__adjust_single_step_output_just_state():
     state = State({"count": 1})
-    assert _adjust_single_step_output(state, "test_action", DEFAULT_SCHEMA) == ({}, state)
+    assert _adjust_single_step_output(state, "test_action", DEFAULT_SCHEMA) == (
+        {},
+        state,
+    )
 
 
 def test__adjust_single_step_output_errors_incorrect_type():
@@ -2851,7 +3471,11 @@ class BrokenPersister(BaseStatePersister):
     """Broken persistor."""
 
     def load(
-        self, partition_key: str, app_id: Optional[str], sequence_id: Optional[int] = None, **kwargs
+        self,
+        partition_key: str,
+        app_id: Optional[str],
+        sequence_id: Optional[int] = None,
+        **kwargs,
     ) -> Optional[PersistedStateData]:
         return dict(
             partition_key="key",
@@ -2907,7 +3531,8 @@ def test_load_from_sync_cannot_have_async_persistor_error():
         default_entrypoint="foo",
     )
     with pytest.raises(
-        ValueError, match="are building the sync application, but have used an async initializer."
+        ValueError,
+        match="are building the sync application, but have used an async initializer.",
     ):
         # we have not initialized
         builder._load_from_sync_persister()
@@ -2923,7 +3548,8 @@ async def test_load_from_async_cannot_have_sync_persistor_error():
         default_entrypoint="foo",
     )
     with pytest.raises(
-        ValueError, match="are building the async application, but have used an sync initializer."
+        ValueError,
+        match="are building the async application, but have used an sync initializer.",
     ):
         # we have not initialized
         await builder._load_from_async_persister()
@@ -2994,7 +3620,11 @@ class DummyPersister(BaseStatePersister):
     """Dummy persistor."""
 
     def load(
-        self, partition_key: str, app_id: Optional[str], sequence_id: Optional[int] = None, **kwargs
+        self,
+        partition_key: str,
+        app_id: Optional[str],
+        sequence_id: Optional[int] = None,
+        **kwargs,
     ) -> Optional[PersistedStateData]:
         return PersistedStateData(
             partition_key="user123",
@@ -3355,7 +3985,10 @@ def test_application_recursive_action_lifecycle_hooks():
     hook = TestingHook()
     foo = []
 
-    @action(reads=["recursion_count", "total_count"], writes=["recursion_count", "total_count"])
+    @action(
+        reads=["recursion_count", "total_count"],
+        writes=["recursion_count", "total_count"],
+    )
     def recursive_action(state: State) -> State:
         foo.append(1)
         recursion_count = state["recursion_count"]
@@ -3437,7 +4070,8 @@ def test_set_sync_state_persister_cannot_have_async_error():
     persister = AsyncDevNullPersister()
     builder.with_state_persister(persister)
     with pytest.raises(
-        ValueError, match="are building the sync application, but have used an async persister."
+        ValueError,
+        match="are building the sync application, but have used an async persister.",
     ):
         # we have not initialized
         builder._set_sync_state_persister()
@@ -3458,7 +4092,8 @@ async def test_set_async_state_persister_cannot_have_sync_error():
     persister = DevNullPersister()
     builder.with_state_persister(persister)
     with pytest.raises(
-        ValueError, match="are building the async application, but have used an sync persister."
+        ValueError,
+        match="are building the async application, but have used an sync persister.",
     ):
         # we have not initialized
         await builder._set_async_state_persister()
@@ -3559,15 +4194,27 @@ class ActionWithContextTracer(ActionWithoutContext):
 def test_remap_context_variable_with_mangled_context_kwargs():
     _action = ActionWithKwargs()
 
-    inputs = {"__context": "context_value", "other_key": "other_value", "foo": "foo_value"}
-    expected = {"__context": "context_value", "other_key": "other_value", "foo": "foo_value"}
+    inputs = {
+        "__context": "context_value",
+        "other_key": "other_value",
+        "foo": "foo_value",
+    }
+    expected = {
+        "__context": "context_value",
+        "other_key": "other_value",
+        "foo": "foo_value",
+    }
     assert _remap_dunder_parameters(_action.run, inputs, ["__context", "__tracer"]) == expected
 
 
 def test_remap_context_variable_with_mangled_context():
     _action = ActionWithContext()
 
-    inputs = {"__context": "context_value", "other_key": "other_value", "foo": "foo_value"}
+    inputs = {
+        "__context": "context_value",
+        "other_key": "other_value",
+        "foo": "foo_value",
+    }
     expected = {
         f"_{ActionWithContext.__name__}__context": "context_value",
         "other_key": "other_value",
@@ -3596,8 +4243,16 @@ def test_remap_context_variable_with_mangled_contexttracer():
 
 def test_remap_context_variable_without_mangled_context():
     _action = ActionWithoutContext()
-    inputs = {"__context": "context_value", "other_key": "other_value", "foo": "foo_value"}
-    expected = {"__context": "context_value", "other_key": "other_value", "foo": "foo_value"}
+    inputs = {
+        "__context": "context_value",
+        "other_key": "other_value",
+        "foo": "foo_value",
+    }
+    expected = {
+        "__context": "context_value",
+        "other_key": "other_value",
+        "foo": "foo_value",
+    }
     assert _remap_dunder_parameters(_action.run, inputs, ["__context", "__tracer"]) == expected
 
 
@@ -3665,3 +4320,38 @@ def test_application__process_control_flow_params():
     assert sorted(halt_after) == ["test_action", "test_action_2"]
     assert halt_before == ["test_action"]
     assert inputs == {}
+
+
+def test_initialize_from_applies_override_state_values():
+    class FakeStateLoader(BaseStateLoader):
+        def load(self, partition_key, app_id, sequence_id):
+            return {
+                "state": State({"x": 1}),
+                "position": None,
+                "sequence_id": 0,
+                "status": "completed",
+            }
+
+        def list_app_ids(self, partition_key):
+            return []
+
+    @action(reads=[], writes=[])
+    def noop(state: State) -> State:
+        return state
+
+    builder = (
+        ApplicationBuilder()
+        .initialize_from(
+            initializer=FakeStateLoader(),
+            resume_at_next_action=False,
+            default_state={},
+            default_entrypoint="noop",
+            override_state_values={"x": 100},
+        )
+        .with_actions(noop)
+        .with_transitions()
+    )
+
+    app = builder.build()
+
+    assert app.state["x"] == 100
