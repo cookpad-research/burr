@@ -1,22 +1,3 @@
-..
-   Licensed to the Apache Software Foundation (ASF) under one
-   or more contributor license agreements.  See the NOTICE file
-   distributed with this work for additional information
-   regarding copyright ownership.  The ASF licenses this file
-   to you under the Apache License, Version 2.0 (the
-   "License"); you may not use this file except in compliance
-   with the License.  You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing,
-   software distributed under the License is distributed on an
-   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-   KIND, either express or implied.  See the License for the
-   specific language governing permissions and limitations
-   under the License.
-
-
 =================
 Next Steps
 =================
@@ -38,7 +19,7 @@ If you haven't already:
 
 .. code-block:: bash
 
-    pip install apache-burr[start]
+    pip install burr[start]
 
 Then:
 
@@ -55,7 +36,7 @@ For the next examples you'll need the repository cloned:
 
 .. code-block:: bash
 
-    git clone https://github.com/apache/burr && cd burr
+    git clone https://github.com/dagworks-inc/burr && cd burr
 
 -------------------------------
 Simple Counter ``demo_counter``
@@ -88,7 +69,7 @@ Once you're comfortable with the UI, you may want to get a sense of a few of the
 of the Burr library and where you can go to learn more about them:
 
 - :ref:`Creating custom actions <actions>` and calling out to integrated frameworks
-- :ref:`Running applications <applications>`, managing their lifecycle, and inspecting the results
+- :ref:`Running applications <applications>`, managing their lifeycyle, and inspecting the results
 - :ref:`Managing state <state>` -- persisting, inspecting, and updating
 - :ref:`Handling transition between nodes <transitions>` and managing the flow of your application
 - :ref:`Adding hooks to customize execution <hooks>` and integrate with other systems

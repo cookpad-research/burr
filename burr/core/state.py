@@ -1,20 +1,3 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-
 import abc
 import copy
 import dataclasses
@@ -307,7 +290,7 @@ class State(Mapping, Generic[StateType]):
             # This ensures we only copy the fields that are read by value
             # and copy the others by value
             # TODO -- make this more efficient when we have immutable transactions
-            # with event-based history: https://github.com/apache/burr/issues/33
+            # with event-based history: https://github.com/DAGWorks-Inc/burr/issues/33
             if field in new_state:
                 # currently the reads() includes optional fields
                 # We should clean that up, but this is an internal API so not worried now
@@ -328,20 +311,15 @@ class State(Mapping, Generic[StateType]):
 
         def _serialize(k, v, **extrakwargs) -> Union[dict, str]:
             """chooses the correct serde function for the given key and calls it"""
-            try:
-                if k in FIELD_SERIALIZATION:
-                    result = FIELD_SERIALIZATION[k][0](v, **extrakwargs)
-                    if not isinstance(result, dict):
-                        raise ValueError(
-                            f"Field serde for {k} must return a dict,"
-                            f" but {FIELD_SERIALIZATION[k][0].__name__} returned {type(result)} ({str(result)[0:10]})."
-                        )
-                    return result
-                return serde.serialize(v, **extrakwargs)
-            except Exception as e:
-                raise ValueError(
-                    f"Failed to serialize state field '{k}' (value of type {type(v).__name__}): {e}"
-                ) from e
+            if k in FIELD_SERIALIZATION:
+                result = FIELD_SERIALIZATION[k][0](v, **extrakwargs)
+                if not isinstance(result, dict):
+                    raise ValueError(
+                        f"Field serde for {k} must return a dict,"
+                        f" but {FIELD_SERIALIZATION[k][0].__name__} returned {type(result)} ({str(result)[0:10]})."
+                    )
+                return result
+            return serde.serialize(v, **extrakwargs)
 
         return {k: _serialize(k, v, **kwargs) for k, v in _dict.items()}
 
@@ -351,12 +329,9 @@ class State(Mapping, Generic[StateType]):
 
         def _deserialize(k, v: Union[str, dict], **extrakwargs) -> Callable:
             """chooses the correct serde function for the given key and calls it"""
-            try:
-                if k in FIELD_SERIALIZATION:
-                    return FIELD_SERIALIZATION[k][1](v, **extrakwargs)
-                return serde.deserialize(v, **extrakwargs)
-            except Exception as e:
-                raise ValueError(f"Failed to deserialize state field '{k}': {e}") from e
+            if k in FIELD_SERIALIZATION:
+                return FIELD_SERIALIZATION[k][1](v, **extrakwargs)
+            return serde.deserialize(v, **extrakwargs)
 
         return State({k: _deserialize(k, v, **kwargs) for k, v in json_dict.items()})
 
@@ -467,14 +442,6 @@ class State(Mapping, Generic[StateType]):
 
     def __iter__(self) -> Iterator[Any]:
         return iter(self._state)
-
-    def keys(self):
-        """Returns a list of the state keys only (without values for cleaner display).
-
-        Returns:
-            list: A list of state keys
-        """
-        return list(self._state)
 
     def __repr__(self):
         return self.get_all().__repr__()  # quick hack

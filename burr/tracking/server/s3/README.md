@@ -1,22 +1,3 @@
-<!--
-     Licensed to the Apache Software Foundation (ASF) under one
-     or more contributor license agreements.  See the NOTICE file
-     distributed with this work for additional information
-     regarding copyright ownership.  The ASF licenses this file
-     to you under the Apache License, Version 2.0 (the
-     "License"); you may not use this file except in compliance
-     with the License.  You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-     Unless required by applicable law or agreed to in writing,
-     software distributed under the License is distributed on an
-     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-     KIND, either express or implied.  See the License for the
-     specific language governing permissions and limitations
-     under the License.
--->
-
 # S3-backed server
 
 This is an implementation of the backend server that uses s3 as the communication buffer.
@@ -33,7 +14,7 @@ The server is executable by a simple python command (although in production you'
 To get everything you need, you can install as you would any python library:
 
 ```bash
-pip install "apache-burr[tracking-server-s3, cli]"
+pip install "burr[tracking-server-s3, cli]"
 ```
 
 Note that this enables you to run through the CLI -- you won't need the CLI target to run in production,
@@ -59,9 +40,8 @@ This will immediately start indexing your s3 bucket (or pick up from the last sn
 
 To track your data, you use the S3TrackingClient. You pass the tracker to the `ApplicationBuilder`:
 
-```python
-from burr.tracking.s3client import S3TrackingClient
 
+```python
 app = (
     ApplicationBuilder()
     .with_graph(graph)

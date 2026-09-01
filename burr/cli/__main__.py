@@ -1,20 +1,3 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-
 import importlib.util
 import json
 import logging
@@ -27,11 +10,9 @@ import time
 import webbrowser
 from contextlib import contextmanager
 from importlib.resources import files
-from pathlib import Path
 from types import ModuleType
-from typing import Optional
 
-from burr import system
+from burr import system, telemetry
 from burr.core.persistence import PersistedStateData
 from burr.integrations.base import require_plugin
 from burr.log_setup import setup_logging
@@ -50,7 +31,13 @@ except ImportError as e:
 setup_logging(logging.INFO)
 
 
-def _command(command: str, capture_output: bool, addl_env: dict | None = None) -> str:
+# TODO -- add this as a general callback to the CLI
+def _telemetry_if_enabled(event: str):
+    if telemetry.is_telemetry_enabled():
+        telemetry.create_and_send_cli_event(event)
+
+
+def _command(command: str, capture_output: bool, addl_env: dict = None) -> str:
     """Runs a simple command"""
     if addl_env is None:
         addl_env = {}
@@ -74,27 +61,7 @@ def _command(command: str, capture_output: bool, addl_env: dict | None = None) -
 
 
 def _get_git_root() -> str:
-    env_root = os.environ.get("BURR_PROJECT_ROOT")
-    if env_root:
-        return env_root
-    try:
-        return _command("git rev-parse --show-toplevel", capture_output=True)
-    except subprocess.CalledProcessError:
-        package_root = _locate_package_root()
-        if package_root is not None:
-            logger.warning("Not inside a git repository; using package root %s.", package_root)
-            return package_root
-        logger.warning("Not inside a git repository; defaulting to current directory.")
-        return os.getcwd()
-
-
-def _locate_package_root() -> Optional[str]:
-    path = Path(__file__).resolve()
-    for candidate in (path.parent,) + tuple(path.parents):
-        telemetry_dir = candidate / "telemetry" / "ui"
-        if telemetry_dir.exists():
-            return str(candidate)
-    return None
+    return _command("git rev-parse --show-toplevel", capture_output=True)
 
 
 def open_when_ready(check_url: str, open_url: str):
@@ -126,8 +93,7 @@ def cli():
     pass
 
 
-def run_build_ui_bash_commands():
-    """Execute the bash commands to build UI artifacts."""
+def _build_ui():
     cmd = "npm install --prefix telemetry/ui"
     _command(cmd, capture_output=False)
     cmd = "npm run build --prefix telemetry/ui"
@@ -135,19 +101,15 @@ def run_build_ui_bash_commands():
     # create a symlink so we can get packages inside it...
     cmd = "rm -rf burr/tracking/server/build"
     _command(cmd, capture_output=False)
-    cmd = "mkdir -p burr/tracking/server/build"
-    _command(cmd, capture_output=False)
-    cmd = "cp -a telemetry/ui/build/. burr/tracking/server/build/"
+    cmd = "cp -R telemetry/ui/build burr/tracking/server/build"
     _command(cmd, capture_output=False)
 
 
-@cli.command(name="build-ui")
+@cli.command()
 def build_ui():
-    """Build the UI artifacts from source."""
     git_root = _get_git_root()
-    logger.info("UI build: using project root %s", git_root)
     with cd(git_root):
-        run_build_ui_bash_commands()
+        _build_ui()
 
 
 BACKEND_MODULES = {
@@ -165,10 +127,11 @@ def _run_server(
     host: str = "127.0.0.1",
     backend: str = "local",
 ):
+    _telemetry_if_enabled("run_server")
     # TODO: Implement server running logic here
     # Example: Start a web server, configure ports, etc.
     logger.info(f"Starting server on port {port}")
-    cmd = f"{sys.executable} -m uvicorn burr.tracking.server.run:app --port {port} --host {host}"
+    cmd = f"uvicorn burr.tracking.server.run:app --port {port} --host {host}"
     if dev_mode:
         cmd += " --reload"
 
@@ -237,10 +200,11 @@ def demo_server(port: int):
 @click.option("--prod", is_flag=True, help="Publish to pypi (rather than test pypi)")
 @click.option("--no-wipe-dist", is_flag=True, help="Wipe the dist/ directory before building")
 def build_and_publish(prod: bool, no_wipe_dist: bool):
+    _telemetry_if_enabled("build_and_publish")
     git_root = _get_git_root()
     with cd(git_root):
         logger.info("Building UI -- this may take a bit...")
-        build_ui()
+        _build_ui()
         logger.info("Built UI!")
         if not no_wipe_dist:
             logger.info("Wiping dist/ directory for a clean publish.")
@@ -264,6 +228,7 @@ def build_and_publish(prod: bool, no_wipe_dist: bool):
 @click.option("--unique-app-names", help="Use unique app names", is_flag=True)
 @click.option("--no-clear-current-data", help="Don't clear current data", is_flag=True)
 def generate_demo_data(s3_bucket, data_dir, unique_app_names: bool, no_clear_current_data: bool):
+    _telemetry_if_enabled("generate_demo_data")
     git_root = _get_git_root()
     # We need to add the examples directory to the path so we have all the imports
     # The GPT-one relies on a local import
@@ -477,14 +442,14 @@ def create_test_case(
     if target_file_name:
         # if it already exists, load it up and append to it
         if os.path.exists(target_file_name):
-            with open(target_file_name, "r", encoding="utf-8") as f:
+            with open(target_file_name, "r") as f:
                 # assumes it's a list of test cases
                 current_testcases = json.load(f)
             current_testcases.append(tc_json)
         else:
             current_testcases = [tc_json]
         print(f"\nWriting data to file {target_file_name}")
-        with open(target_file_name, "w", encoding="utf-8") as f:
+        with open(target_file_name, "w") as f:
             json.dump(current_testcases, f, indent=2)
     else:
         logger.info(json.dumps(tc_json, indent=2))

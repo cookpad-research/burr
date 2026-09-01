@@ -1,20 +1,3 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-
 from __future__ import annotations
 
 import copy
@@ -51,10 +34,8 @@ PydanticActionFunction = Callable[..., Union[pydantic.BaseModel, Awaitable[pydan
 
 def model_to_dict(model: pydantic.BaseModel, include: Optional[List[str]] = None) -> dict:
     """Utility function to convert a pydantic model to a dictionary."""
-    keys = type(model).model_fields.keys()
-    keys = (
-        keys if include is None else [item for item in include if item in type(model).model_fields]
-    )
+    keys = model.model_fields.keys()
+    keys = keys if include is None else [item for item in include if item in model.model_fields]
     return {key: getattr(model, key) for key in keys}
 
 
@@ -131,17 +112,14 @@ def _validate_and_extract_signature_types(
             "action must be the state object. Got signature: {sig}."
         )
     type_hints = typing.get_type_hints(fn)
-    state_model = type_hints.get("state")
 
-    if (
-        state_model is None
-        or state_model is inspect.Parameter.empty
-        or not issubclass(state_model, pydantic.BaseModel)
+    if (state_model := type_hints["state"]) is inspect.Parameter.empty or not issubclass(
+        state_model, pydantic.BaseModel
     ):
         raise ValueError(
             f"Function fn: {fn.__qualname__} is not a valid pydantic action. "
-            "The 'state' parameter must be annotated with a type extending pydantic.BaseModel. "
-            f"Got: {state_model}."
+            "a type annotation of a type extending: pydantic.BaseModel. Got parameter "
+            "state: {state_model.__qualname__}."
         )
     if (ret_hint := type_hints.get("return")) is None or not issubclass(
         ret_hint, pydantic.BaseModel

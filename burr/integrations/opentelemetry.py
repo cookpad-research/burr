@@ -1,20 +1,3 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-
 import dataclasses
 import datetime
 import importlib
@@ -499,20 +482,19 @@ class BurrTrackingSpanProcessor(SpanProcessor):
                         app_id=parent_span.app_id,
                     ),
                 )
-                if self.tracker is not None:
-                    self.tracker.pre_start_span(
-                        action=context.action_span.action,
-                        action_sequence_id=context.action_span.action_sequence_id,
-                        span=context.action_span,
-                        span_dependencies=[],  # TODO -- log
-                        app_id=context.app_id,
-                        partition_key=context.partition_key,
-                    )
+                self.tracker.pre_start_span(
+                    action=context.action_span.action,
+                    action_sequence_id=context.action_span.action_sequence_id,
+                    span=context.action_span,
+                    span_dependencies=[],  # TODO -- log
+                    app_id=context.app_id,
+                    partition_key=context.partition_key,
+                )
 
     def on_end(self, span: "Span") -> None:
         cached_span = get_cached_span(span.get_span_context().span_id)
         # If this is none it means we're outside of the burr context
-        if cached_span is not None and self.tracker is not None:
+        if cached_span is not None:
             # TODO -- get tracker context to work
             self.tracker.post_end_span(
                 action=cached_span.action_span.action,
@@ -665,8 +647,7 @@ def _init_instrument(
 
     try:
         instrumentation_module = importlib.import_module(instrumentation_module_name)
-        instrumentor_cls = getattr(instrumentation_module, instrumentor_name)
-        instrumentor = instrumentor_cls()
+        instrumentor = getattr(instrumentation_module, instrumentor_name)
         if instrumentor.is_instrumented_by_opentelemetry:
             logger.debug(f"`{module_name}` is already instrumented.")
         else:

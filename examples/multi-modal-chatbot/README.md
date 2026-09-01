@@ -1,22 +1,3 @@
-<!--
-     Licensed to the Apache Software Foundation (ASF) under one
-     or more contributor license agreements.  See the NOTICE file
-     distributed with this work for additional information
-     regarding copyright ownership.  The ASF licenses this file
-     to you under the Apache License, Version 2.0 (the
-     "License"); you may not use this file except in compliance
-     with the License.  You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-     Unless required by applicable law or agreed to in writing,
-     software distributed under the License is distributed on an
-     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-     KIND, either express or implied.  See the License for the
-     specific language governing permissions and limitations
-     under the License.
--->
-
 # GPT-like chatbot
 
 This is an example of chatgpt-like bot. It is simplified, but demonstrates the core concepts nicely.
@@ -45,7 +26,7 @@ We have a few files:
 - [application.py](application.py) -- This contains a mainline to generate the graph portrayal.
 - [requirements.txt](requirements.txt) -- Just the requirements. All this needs is Burr/Streamlit/openai
 - [simple_streamlit_app.py](simple_streamlit_app.py) -- This contains a more sophisticated Streamlit app to interact with.
-- [notebook.ipynb](notebook.ipynb) -- A notebook that helps exercise things. <a target="_blank" href="https://colab.research.google.com/github/apache/burr/blob/main/examples/multi-modal-chatbot/notebook.ipynb">
+- [notebook.ipynb](notebook.ipynb) -- A notebook that helps exercise things. <a target="_blank" href="https://colab.research.google.com/github/dagworks-inc/burr/blob/main/examples/multi-modal-chatbot/notebook.ipynb">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
 - [streamlit_app.py](streamlit_app.py) -- This contains a simple Streamlit app to interact with that is more

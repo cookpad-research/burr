@@ -1,22 +1,3 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
 /* generated using openapi-typescript-codegen -- do no edit */
 /* istanbul ignore file */
 /* tslint:disable */
@@ -36,7 +17,6 @@ import type { Project } from '../models/Project';
 import type { PromptInput } from '../models/PromptInput';
 import type { QuestionAnswers } from '../models/QuestionAnswers';
 import type { ResearchSummary } from '../models/ResearchSummary';
-import type { CounterState } from '../models/CounterState';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -696,90 +676,6 @@ export class DefaultService {
     return __request(OpenAPI, {
       method: 'GET',
       url: '/api/v0/deep_researcher/validate'
-    });
-  }
-  /**
-   * Count
-   * Increment the counter by one step and return the new state.
-   *
-   * :param project_id: Project ID to run
-   * :param app_id: Application ID to run
-   * :return: The current counter state
-   * @param projectId
-   * @param appId
-   * @returns CounterState Successful Response
-   * @throws ApiError
-   */
-  public static countApiV0CounterCountProjectIdAppIdPost(
-    projectId: string,
-    appId: string
-  ): CancelablePromise<CounterState> {
-    return __request(OpenAPI, {
-      method: 'POST',
-      url: '/api/v0/counter/count/{project_id}/{app_id}',
-      path: {
-        project_id: projectId,
-        app_id: appId
-      },
-      errors: {
-        422: `Validation Error`
-      }
-    });
-  }
-  /**
-   * Get Counter State
-   * Get the current counter state without incrementing.
-   *
-   * :param project_id: Project ID
-   * :param app_id: App ID
-   * :return: The current counter state
-   * @param projectId
-   * @param appId
-   * @returns CounterState Successful Response
-   * @throws ApiError
-   */
-  public static getCounterStateApiV0CounterStateProjectIdAppIdGet(
-    projectId: string,
-    appId: string
-  ): CancelablePromise<CounterState> {
-    return __request(OpenAPI, {
-      method: 'GET',
-      url: '/api/v0/counter/state/{project_id}/{app_id}',
-      path: {
-        project_id: projectId,
-        app_id: appId
-      },
-      errors: {
-        422: `Validation Error`
-      }
-    });
-  }
-  /**
-   * Create New Application
-   * Endpoint to create a new counter application
-   *
-   * :param project_id: Project ID
-   * :param app_id: App ID
-   * :return: The app ID
-   * @param projectId
-   * @param appId
-   * @returns string Successful Response
-   * @throws ApiError
-   */
-  public static createNewApplicationApiV0CounterCreateProjectIdAppIdPost(
-    projectId: string,
-    appId: string
-  ): CancelablePromise<string> {
-    return __request(OpenAPI, {
-      method: 'POST',
-      url: '/api/v0/counter/create/{project_id}/{app_id}',
-      path: {
-        project_id: projectId,
-        app_id: appId
-      },
-      errors: {
-        422: `Validation Error`
-      }
     });
   }
 }

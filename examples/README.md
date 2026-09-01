@@ -1,22 +1,3 @@
-<!--
-     Licensed to the Apache Software Foundation (ASF) under one
-     or more contributor license agreements.  See the NOTICE file
-     distributed with this work for additional information
-     regarding copyright ownership.  The ASF licenses this file
-     to you under the Apache License, Version 2.0 (the
-     "License"); you may not use this file except in compliance
-     with the License.  You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-     Unless required by applicable law or agreed to in writing,
-     software distributed under the License is distributed on an
-     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-     KIND, either express or implied.  See the License for the
-     specific language governing permissions and limitations
-     under the License.
--->
-
 # Examples
 
 This contains a series of examples. Each example is meant to demonostrate a feature/use-case of the Burr library.
@@ -48,6 +29,5 @@ Note we have a few more in [other-examples](other-examples/), but those do not y
 - [multi-agent-collaboration](multi-agent-collaboration/) - This example shows how to use Burr to create a multi-agent collaboration. This is a clone of the following [LangGraph example](https://github.com/langchain-ai/langgraph/blob/main/examples/multi_agent/multi-agent-collaboration.ipynb).
 - [multi-modal-chatbot](multi-modal-chatbot/) - This example shows how to use Burr to create a multi-modal chatbot. This demonstrates how to use a model to delegate to other models conditionally.
 - [streaming-overview](streaming-overview/) - This example shows how we can use the streaming API to respond to return quicker results to the user and build a seamless experience
-- [integrations/bedrock](integrations/bedrock/) - Minimal graphs using Amazon Bedrock (`BedrockAction` and `BedrockStreamingAction`).
 - [tracing-and-spans](tracing-and-spans/) - This example shows how to use Burr to create a simple chatbot with additional visibility. This is a good starting point for understanding how to use Burr's tracing functionality.
 - [web-server](web-server/) - This example shows how to use Burr in a web server. This is a good starting point for understanding how to use Burr for interaction.

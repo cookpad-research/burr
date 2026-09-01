@@ -1,28 +1,11 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-
 import json
 import logging
-from typing import Any, ClassVar, Literal, Optional
-
-from burr.common.async_utils import _AsyncPersisterContextManager
+from typing import Literal, Optional, ClassVar
+from typing import Any
 from burr.common.types import BaseCopyable
 from burr.core import persistence, state
 from burr.integrations import base
+
 
 try:
     import asyncpg
@@ -107,20 +90,12 @@ class AsyncPostgreSQLPersister(persistence.AsyncBaseStatePersister, BaseCopyable
         return cls._pool
 
     @classmethod
-    def from_config(cls, config: dict) -> "_AsyncPersisterContextManager":
-        """Creates a new instance of the PostgreSQLPersister from a configuration dictionary.
-
-        Can be used with ``await`` or as an async context manager::
-
-            persister = await AsyncPostgreSQLPersister.from_config(config)
-            # or
-            async with AsyncPostgreSQLPersister.from_config(config) as persister:
-                ...
-        """
-        return cls.from_values(**config)
+    async def from_config(cls, config: dict) -> "AsyncPostgreSQLPersister":
+        """Creates a new instance of the PostgreSQLPersister from a configuration dictionary."""
+        return await cls.from_values(**config)
 
     @classmethod
-    def from_values(
+    async def from_values(
         cls,
         db_name: str,
         user: str,
@@ -130,15 +105,8 @@ class AsyncPostgreSQLPersister(persistence.AsyncBaseStatePersister, BaseCopyable
         table_name: str = "burr_state",
         use_pool: bool = False,
         **pool_kwargs,
-    ) -> "_AsyncPersisterContextManager":
+    ) -> "AsyncPostgreSQLPersister":
         """Builds a new instance of the PostgreSQLPersister from the provided values.
-
-        Can be used with ``await`` or as an async context manager::
-
-            persister = await AsyncPostgreSQLPersister.from_values(...)
-            # or
-            async with AsyncPostgreSQLPersister.from_values(...) as persister:
-                ...
 
         :param db_name: the name of the PostgreSQL database.
         :param user: the username to connect to the PostgreSQL database.
@@ -149,25 +117,22 @@ class AsyncPostgreSQLPersister(persistence.AsyncBaseStatePersister, BaseCopyable
         :param use_pool: whether to use a connection pool (True) or a direct connection (False)
         :param pool_kwargs: additional kwargs to pass to the pool creation
         """
-
-        async def _create():
-            if use_pool:
-                pool = await cls.create_pool(
-                    user=user,
-                    password=password,
-                    database=db_name,
-                    host=host,
-                    port=port,
-                    **pool_kwargs,
-                )
-                return cls(connection=None, pool=pool, table_name=table_name)
-            else:
-                connection = await asyncpg.connect(
-                    user=user, password=password, database=db_name, host=host, port=port
-                )
-                return cls(connection=connection, table_name=table_name)
-
-        return _AsyncPersisterContextManager(_create())
+        if use_pool:
+            pool = await cls.create_pool(
+                user=user,
+                password=password,
+                database=db_name,
+                host=host,
+                port=port,
+                **pool_kwargs,
+            )
+            return cls(connection=None, pool=pool, table_name=table_name)
+        else:
+            # Original behavior - direct connection
+            connection = await asyncpg.connect(
+                user=user, password=password, database=db_name, host=host, port=port
+            )
+            return cls(connection=connection, table_name=table_name)
 
     def __init__(
         self,

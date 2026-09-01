@@ -1,22 +1,3 @@
-<!--
-     Licensed to the Apache Software Foundation (ASF) under one
-     or more contributor license agreements.  See the NOTICE file
-     distributed with this work for additional information
-     regarding copyright ownership.  The ASF licenses this file
-     to you under the Apache License, Version 2.0 (the
-     "License"); you may not use this file except in compliance
-     with the License.  You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-     Unless required by applicable law or agreed to in writing,
-     software distributed under the License is distributed on an
-     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-     KIND, either express or implied.  See the License for the
-     specific language governing permissions and limitations
-     under the License.
--->
-
 #### [Adaptive-RAG](https://arxiv.org/pdf/2403.14403) is a strategy for dynamically selecting the most suitable route for a given user query. A route could be vector database retrieval, web search, direct answer, or any other viable route.
 
 #### [Corrective-RAG (CRAG)](https://arxiv.org/pdf/2401.15884) is a strategy for RAG that incorporates self-reflection / self-grading on retrieved documents.
@@ -38,4 +19,4 @@ We stop after `ask_assistant` to get the next `query` for `router`.
 ## Adaptive-CRAG 🧪
 ![statemachine](statemachine.png)
 
-We have some of the core concepts from the [Burr Docs](https://burr.apache.org/concepts/) in a folder and we will add that to a `LanceDB` table for Hybrid Search. You can add as many tables as you want. Each table will be a different route for the `router`.
+We have some of the core concepts from the [Burr Docs](https://burr.dagworks.io/concepts/) in a folder and we will add that to a `LanceDB` table for Hybrid Search. You can add as many tables as you want. Each table will be a different route for the `router`.

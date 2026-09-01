@@ -1,22 +1,4 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-
 import asyncio
-import warnings
 from typing import AsyncGenerator, Generator, List, Optional, Tuple
 
 import pydantic
@@ -135,14 +117,6 @@ def test_subset_model_copy_config():
     assert SubsetModel.model_config == {"arbitrary_types_allowed": True}
 
 
-def test_model_to_dict_no_deprecation_warning():
-    model = OriginalModel(foo=1, bar="bar", nested=NestedModel(nested_field1=1))
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        result = model_to_dict(model)
-    assert "foo" in result
-
-
 def test_merge_to_state():
     model = OriginalModel(
         foo=1,
@@ -194,10 +168,6 @@ def _fn_with_no_return_type(state: OriginalModel):
     ...
 
 
-def _fn_with_untyped_state_arg(state) -> OriginalModel:
-    ...
-
-
 def _fn_correct_same_itype_otype(state: OriginalModel, input_1: int) -> OriginalModel:
     ...
 
@@ -213,19 +183,11 @@ def _fn_correct_diff_itype_otype(state: OriginalModel, input_1: int) -> NestedMo
         (_fn_with_incorrect_state_arg, ValueError),
         (_fn_with_incorrect_return_type, ValueError),
         (_fn_with_no_return_type, ValueError),
-        (_fn_with_untyped_state_arg, ValueError),
     ],
 )
 def test__validate_and_extract_signature_types_error(fn, expected_exception):
     with pytest.raises(expected_exception=expected_exception):
         _validate_and_extract_signature_types(fn)
-
-
-def test__validate_and_extract_signature_types_untyped_state_error_message():
-    """Test that the error message is informative when state is not type-annotated."""
-    with pytest.raises(ValueError) as excinfo:
-        _validate_and_extract_signature_types(_fn_with_untyped_state_arg)
-    assert "'state' parameter must be annotated" in str(excinfo.value)
 
 
 @pytest.mark.parametrize(

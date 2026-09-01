@@ -1,32 +1,14 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-
 import json
 import logging
 from typing import Literal, Optional
 
 import aiosqlite
 
-from burr.common.async_utils import _AsyncPersisterContextManager
 from burr.common.types import BaseCopyable
 from burr.core import State
 from burr.core.persistence import AsyncBaseStatePersister, PersistedStateData
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 try:
     from typing import Self
@@ -61,15 +43,8 @@ class AsyncSQLitePersister(AsyncBaseStatePersister, BaseCopyable):
     PARTITION_KEY_DEFAULT = ""
 
     @classmethod
-    def from_config(cls, config: dict) -> "_AsyncPersisterContextManager":
+    async def from_config(cls, config: dict) -> "AsyncSQLitePersister":
         """Creates a new instance of the AsyncSQLitePersister from a configuration dictionary.
-
-        Can be used with ``await`` or as an async context manager::
-
-            persister = await AsyncSQLitePersister.from_config(config)
-            # or
-            async with AsyncSQLitePersister.from_config(config) as persister:
-                ...
 
         The config key:value pair needed are:
         db_path: str,
@@ -77,24 +52,17 @@ class AsyncSQLitePersister(AsyncBaseStatePersister, BaseCopyable):
         serde_kwargs: dict,
         connect_kwargs: dict,
         """
-        return cls.from_values(**config)
+        return await cls.from_values(**config)
 
     @classmethod
-    def from_values(
+    async def from_values(
         cls,
         db_path: str,
         table_name: str = "burr_state",
         serde_kwargs: dict = None,
         connect_kwargs: dict = None,
-    ) -> "_AsyncPersisterContextManager":
+    ) -> "AsyncSQLitePersister":
         """Creates a new instance of the AsyncSQLitePersister from passed in values.
-
-        Can be used with ``await`` or as an async context manager::
-
-            persister = await AsyncSQLitePersister.from_values(db_path="test.db")
-            # or
-            async with AsyncSQLitePersister.from_values(db_path="test.db") as persister:
-                ...
 
         :param db_path: the path the DB will be stored.
         :param table_name: the table name to store things under.
@@ -103,14 +71,10 @@ class AsyncSQLitePersister(AsyncBaseStatePersister, BaseCopyable):
         :return: async sqlite persister instance with an open connection. You are responsible
             for closing the connection yourself.
         """
-
-        async def _create():
-            connection = await aiosqlite.connect(
-                db_path, **connect_kwargs if connect_kwargs is not None else {}
-            )
-            return cls(connection, table_name, serde_kwargs)
-
-        return _AsyncPersisterContextManager(_create())
+        connection = await aiosqlite.connect(
+            db_path, **connect_kwargs if connect_kwargs is not None else {}
+        )
+        return cls(connection, table_name, serde_kwargs)
 
     def __init__(
         self,

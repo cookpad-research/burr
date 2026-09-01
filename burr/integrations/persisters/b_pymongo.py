@@ -1,37 +1,11 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-
 import json
 import logging
 from datetime import datetime, timezone
-from importlib.metadata import version as get_version
 from typing import Literal, Optional
 
 from pymongo import MongoClient
-from pymongo.driver_info import DriverInfo
 
 from burr.core import persistence, state
-
-try:
-    _VERSION = get_version("apache-burr")
-except Exception:
-    _VERSION = None
-
-_DRIVER_INFO = DriverInfo(name="Burr", version=_VERSION)
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +52,6 @@ class MongoDBBasePersister(persistence.BaseStatePersister):
         """Initializes the MongoDBBasePersister class."""
         if mongo_client_kwargs is None:
             mongo_client_kwargs = {}
-        mongo_client_kwargs.setdefault("driver", _DRIVER_INFO)
         client = MongoClient(uri, **mongo_client_kwargs)
         return cls(
             client=client,
@@ -102,8 +75,6 @@ class MongoDBBasePersister(persistence.BaseStatePersister):
         :param serde_kwargs: serializer/deserializer keyword arguments to pass to the state object
         """
         self.client = client
-        if hasattr(client, "append_metadata"):
-            client.append_metadata(_DRIVER_INFO)
         self.db = self.client[db_name]
         self.collection = self.db[collection_name]
         self.serde_kwargs = serde_kwargs or {}
@@ -132,13 +103,11 @@ class MongoDBBasePersister(persistence.BaseStatePersister):
         This method retrieves the most recent state data for the specified (partition_key, app_id) combination.
         If a sequence ID is provided, it will attempt to fetch the specific state at that sequence.
 
-        :param partition_key: The partition key. Defaults to `None`.
-            **Note:** The partition key defaults to `None`. If a partition key was used during saving,
-            it must be provided consistently during retrieval, or no results will be returned.
+        :param partition_key: The partition key. Defaults to `None`. **Note:** The partition key defaults to `None`. If a partition key was used during saving, it must be provided
+        consistently during retrieval, or no results will be returned.
         :param app_id: Application UID to read from.
         :param sequence_id: (Optional) The sequence ID to retrieve a specific state. If not provided,
             the latest state is returned.
-
 
         :returns: The state data if found, otherwise None.
         """
@@ -171,17 +140,15 @@ class MongoDBBasePersister(persistence.BaseStatePersister):
     ):
         """Save the state data to the MongoDB database.
 
-        :param partition_key: the partition key. Note this could be None, but it's up to the persistor
-                              to whether that is a valid value it can handle. If a partition key was used
-                              during saving, it must be provided consistently during retrieval, or no
-                              results will be returned.
+        :param partition_key: the partition key. Note this could be None, but it's up to the persistor to whether
+        that is a valid value it can handle. If a partition key was used during saving, it must be provided
+        consistently during retrieval, or no results will be returned.
         :param app_id: Application UID to write with.
         :param sequence_id: Sequence ID of the last executed step.
         :param position: The action name that was implemented.
         :param state: The current state of the application.
-        :param status: The status of this state, either "completed" or "failed". If "failed", the state
-                       is what it was before the action was applied.
-
+        :param status: The status of this state, either "completed" or "failed". If "failed", the state is what it was
+            before the action was applied.
         :return:
         """
         key = {"partition_key": partition_key, "app_id": app_id, "sequence_id": sequence_id}
@@ -227,9 +194,7 @@ class MongoDBBasePersister(persistence.BaseStatePersister):
     def __setstate__(self, state: dict):
         connection_params = state.pop("connection_params")
         # we assume MongoClient.
-        self.client = MongoClient(
-            connection_params["uri"], connection_params["port"], driver=_DRIVER_INFO
-        )
+        self.client = MongoClient(connection_params["uri"], connection_params["port"])
         self.db = self.client[connection_params["db_name"]]
         self.collection = self.db[connection_params["collection_name"]]
         self.__dict__.update(state)

@@ -1,22 +1,3 @@
-<!--
-     Licensed to the Apache Software Foundation (ASF) under one
-     or more contributor license agreements.  See the NOTICE file
-     distributed with this work for additional information
-     regarding copyright ownership.  The ASF licenses this file
-     to you under the Apache License, Version 2.0 (the
-     "License"); you may not use this file except in compliance
-     with the License.  You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-     Unless required by applicable law or agreed to in writing,
-     software distributed under the License is distributed on an
-     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-     KIND, either express or implied.  See the License for the
-     specific language governing permissions and limitations
-     under the License.
--->
-
 # Running Burr in a web server
 
 Burr is meant to run interactive apps. This means running it as part of a web-service that
@@ -38,7 +19,7 @@ it requires human assistance at multiple points to build a better product.
 If you want to get a sense for how this looks, open the burr UI:
 
 ```bash
-pip install "apache-burr[start]"
+pip install "burr[start]"
 burr
 ```
 
@@ -175,7 +156,7 @@ they can debug any state-related issues, ensuring a smooth user experience.
 
 Note that we never called out to databases. It all just magically worked.. This is all because we decouple the persistence
 layer from the web-call. The application will be persisted (to whatever database you want),
-by burr's plugin capabilities -- read more [here](https://burr.apache.org/concepts/state-persistence/).
+by burr's plugin capabilities -- read more [here](https://burr.dagworks.io/concepts/state-persistence/).
 This greatly reduces the amount you have to think about when developing. As Burr persistence is
 pluggable, you can write to your own database with whichever schema you prefer, customizing
 the schema for your project or using a generic one (state is just a JSON object -- you can easily serialize/deseriealize it).
@@ -209,13 +190,13 @@ Or possibly some combination of the above.
 #### Async
 
 While we implemented synchronous calls, you can easily make these async by using `async def` and `await` in the appropriate places,
-and using the `arun` method in Burr. Read more about async capabilities in [applications](https://burr.apache.org/concepts/state-machine/),
-and [actions](https://burr.apache.org/concepts/actions/).
+and using the `arun` method in Burr. Read more about async capabilities in [applications](https://burr.dagworks.io/concepts/state-machine/),
+and [actions](https://burr.dagworks.io/concepts/actions/).
 
 #### Streaming
 
 You can use streaming to send back the stream of the output at any given point. You do this by creating a
-[streaming action](https://burr.apache.org/concepts/streaming-actions/). You can then integrate with the
+[streaming action](https://burr.dagworks.io/concepts/streaming-actions/). You can then integrate with the
 streaming respose in FastAPI to send back the stream of the output. You can do this with any steps
 (intermediate or final) in your application.
 

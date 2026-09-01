@@ -1,20 +1,3 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-
 import pytest
 
 from burr.core import State
@@ -94,43 +77,6 @@ def test_sqlite_persistence_is_initialized_true_new_connection(tmp_path):
     p2.cleanup()
 
 
-def test_sqlite_persister_load_without_initialize_raises_runtime_error():
-    """Test that calling load() without initialize() raises a clear RuntimeError."""
-    persister = SQLLitePersister(db_path=":memory:", table_name="test_table")
-    try:
-        with pytest.raises(RuntimeError, match="Uninitialized persister"):
-            persister.load("partition_key", "app_id")
-    finally:
-        persister.cleanup()
-
-
-def test_sqlite_persister_save_without_initialize_raises_runtime_error():
-    """Test that calling save() without initialize() raises a clear RuntimeError."""
-    persister = SQLLitePersister(db_path=":memory:", table_name="test_table")
-    try:
-        with pytest.raises(RuntimeError, match="Uninitialized persister"):
-            persister.save(
-                "partition_key",
-                "app_id",
-                1,
-                "position",
-                State({"key": "value"}),
-                "completed",
-            )
-    finally:
-        persister.cleanup()
-
-
-def test_sqlite_persister_list_app_ids_without_initialize_raises_runtime_error():
-    """Test that calling list_app_ids() without initialize() raises a clear RuntimeError."""
-    persister = SQLLitePersister(db_path=":memory:", table_name="test_table")
-    try:
-        with pytest.raises(RuntimeError, match="Uninitialized persister"):
-            persister.list_app_ids("partition_key")
-    finally:
-        persister.cleanup()
-
-
 @pytest.mark.parametrize(
     "method_name,kwargs",
     [
@@ -171,6 +117,17 @@ from burr.core.persistence import AsyncInMemoryPersister
 from burr.integrations.persisters.b_aiosqlite import AsyncSQLitePersister
 
 """Asyncio integration for sqlite persister + """
+
+
+class AsyncSQLiteContextManager:
+    def __init__(self, sqlite_object):
+        self.client = sqlite_object
+
+    async def __aenter__(self):
+        return self.client
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.client.close()
 
 
 @pytest.fixture()
@@ -270,15 +227,15 @@ async def test_AsyncSQLitePersister_connection_shutdown():
 
 @pytest.fixture()
 async def initializing_async_persistence():
-    async with AsyncSQLitePersister.from_values(
+    sqlite_persister = await AsyncSQLitePersister.from_values(
         db_path=":memory:", table_name="test_table"
-    ) as client:
+    )
+    async_context_manager = AsyncSQLiteContextManager(sqlite_persister)
+    async with async_context_manager as client:
         yield client
 
 
-async def test_async_persistence_initialization_creates_table(
-    initializing_async_persistence,
-):
+async def test_async_persistence_initialization_creates_table(initializing_async_persistence):
     await asyncio.sleep(0.00001)
     await initializing_async_persistence.initialize()
     assert await initializing_async_persistence.list_app_ids("partition_key") == []

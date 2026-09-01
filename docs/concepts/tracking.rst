@@ -1,22 +1,3 @@
-..
-   Licensed to the Apache Software Foundation (ASF) under one
-   or more contributor license agreements.  See the NOTICE file
-   distributed with this work for additional information
-   regarding copyright ownership.  The ASF licenses this file
-   to you under the Apache License, Version 2.0 (the
-   "License"); you may not use this file except in compliance
-   with the License.  You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing,
-   software distributed under the License is distributed on an
-   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-   KIND, either express or implied.  See the License for the
-   specific language governing permissions and limitations
-   under the License.
-
-
 .. _tracking:
 
 =============
@@ -27,7 +8,7 @@ Tracking Burr
 
     Burr's telemetry system is built in and easy to integrate. It allows you to understand
     the flow of your application, and watch it make decisions in real time. You can run it
-    with sample projects by running ``burr`` in the terminal after ``pip install "apache-burr[start]"``.
+    with sample projects by running ``burr`` in the terminal after ``pip install "burr[start]"``.
 
 Burr comes with a telemetry system that allows tracking a variety of information for debugging,
 both in development and production.
@@ -93,7 +74,7 @@ For example, to debug your Burr Application, you'd have some control flow like t
             fork_from_sequence_id=sequence_id,
             fork_from_partition_key=partition_key
         )
-        .with_tracker(tracker)  # tracking + checkpointing in one line.
+        .with_tracker(tracker)  # tracking + checkpointing; one line 🪄.
         .build()
     )
 
@@ -131,25 +112,3 @@ This will print the URL to access the Burr UI web app.
     from google.colab import output
     output.serve_kernel_port_as_window(7241) # this will open a new window
     output.serve_kernel_port_as_iframe(7241) # this will inline in an iframe
-
----------------------------------------------
-Mount Burr UI inside an existing FastAPI app
----------------------------------------------
-
-You can embed the Burr UI inside an existing FastAPI application using the
-``mount_burr_ui`` helper.
-
-Example:
-
-.. code-block:: python
-
-    from fastapi import FastAPI
-    from burr.tracking.server.run import mount_burr_ui
-
-    app = FastAPI()
-
-    # Mount Burr UI under /burr
-    mount_burr_ui(app, path="/burr")
-
-This allows you to run the Burr tracking UI alongside your own FastAPI
-application in the same server process.

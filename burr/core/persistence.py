@@ -1,20 +1,3 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-
 import abc
 import datetime
 import json
@@ -32,13 +15,6 @@ try:
     from typing import Self
 except ImportError:
     Self = None
-
-# Error message template for uninitialized SQLitePersister
-_UNINITIALIZED_PERSISTER_ERROR = (
-    "Uninitialized persister: table '{table_name}' does not exist. "
-    "Make sure to call .initialize() on the persister before passing it "
-    "to the ApplicationBuilder."
-)
 
 
 class PersistedStateData(TypedDict):
@@ -451,19 +427,12 @@ class SQLitePersister(BaseStatePersister, BaseCopyable):
         )
 
         cursor = self.connection.cursor()
-        try:
-            cursor.execute(
-                f"SELECT DISTINCT app_id FROM {self.table_name} "
-                f"WHERE partition_key = ? "
-                f"ORDER BY created_at DESC",
-                (partition_key,),
-            )
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
-                raise RuntimeError(
-                    _UNINITIALIZED_PERSISTER_ERROR.format(table_name=self.table_name)
-                ) from e
-            raise
+        cursor.execute(
+            f"SELECT DISTINCT app_id FROM {self.table_name} "
+            f"WHERE partition_key = ? "
+            f"ORDER BY created_at DESC",
+            (partition_key,),
+        )
         app_ids = [row[0] for row in cursor.fetchall()]
         return app_ids
 
@@ -489,34 +458,27 @@ class SQLitePersister(BaseStatePersister, BaseCopyable):
         )
         logger.debug("Loading %s, %s, %s", partition_key, app_id, sequence_id)
         cursor = self.connection.cursor()
-        try:
-            if app_id is None:
-                # get latest for all app_ids
-                cursor.execute(
-                    f"SELECT position, state, sequence_id, app_id, created_at, status FROM {self.table_name} "
-                    f"WHERE partition_key = ? "
-                    f"ORDER BY CREATED_AT DESC LIMIT 1",
-                    (partition_key,),
-                )
-            elif sequence_id is None:
-                cursor.execute(
-                    f"SELECT position, state, sequence_id, app_id, created_at, status FROM {self.table_name} "
-                    f"WHERE partition_key = ? AND app_id = ? "
-                    f"ORDER BY sequence_id DESC LIMIT 1",
-                    (partition_key, app_id),
-                )
-            else:
-                cursor.execute(
-                    f"SELECT position, state, sequence_id, app_id, created_at, status FROM {self.table_name} "
-                    f"WHERE partition_key = ? AND app_id = ? AND sequence_id = ?",
-                    (partition_key, app_id, sequence_id),
-                )
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
-                raise RuntimeError(
-                    _UNINITIALIZED_PERSISTER_ERROR.format(table_name=self.table_name)
-                ) from e
-            raise
+        if app_id is None:
+            # get latest for all app_ids
+            cursor.execute(
+                f"SELECT position, state, sequence_id, app_id, created_at, status FROM {self.table_name} "
+                f"WHERE partition_key = ? "
+                f"ORDER BY CREATED_AT DESC LIMIT 1",
+                (partition_key,),
+            )
+        elif sequence_id is None:
+            cursor.execute(
+                f"SELECT position, state, sequence_id, app_id, created_at, status FROM {self.table_name} "
+                f"WHERE partition_key = ? AND app_id = ? "
+                f"ORDER BY sequence_id DESC LIMIT 1",
+                (partition_key, app_id),
+            )
+        else:
+            cursor.execute(
+                f"SELECT position, state, sequence_id, app_id, created_at, status FROM {self.table_name} "
+                f"WHERE partition_key = ? AND app_id = ? AND sequence_id = ?",
+                (partition_key, app_id, sequence_id),
+            )
         row = cursor.fetchone()
         if row is None:
             return None
@@ -572,18 +534,11 @@ class SQLitePersister(BaseStatePersister, BaseCopyable):
         )
         cursor = self.connection.cursor()
         json_state = json.dumps(state.serialize(**self.serde_kwargs))
-        try:
-            cursor.execute(
-                f"INSERT INTO {self.table_name} (partition_key, app_id, sequence_id, position, state, status) "
-                f"VALUES (?, ?, ?, ?, ?, ?)",
-                (partition_key, app_id, sequence_id, position, json_state, status),
-            )
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
-                raise RuntimeError(
-                    _UNINITIALIZED_PERSISTER_ERROR.format(table_name=self.table_name)
-                ) from e
-            raise
+        cursor.execute(
+            f"INSERT INTO {self.table_name} (partition_key, app_id, sequence_id, position, state, status) "
+            f"VALUES (?, ?, ?, ?, ?, ?)",
+            (partition_key, app_id, sequence_id, position, json_state, status),
+        )
         self.connection.commit()
 
     def cleanup(self):

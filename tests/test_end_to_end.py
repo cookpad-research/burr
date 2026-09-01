@@ -1,20 +1,3 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-
 """End-to-end tests -- these are more like integration tests,
 but they're specifically meant to be a smoke-screen. If you ever
 see failures in these tests, you should make a unit test, demonstrate the failure there,
@@ -104,7 +87,7 @@ def test_end_to_end_parallel_collatz_many_unreliable_tasks(tmpdir):
 
     MIN_NUMBER = 80
     MAX_NUMBER = 100
-    FAILURE_ODDS = 0.05  # 1 in twenty chance of failure, will be hit but not all the time
+    FAILURE_ODDS = 0.05  # 1 in twenty chance of faiulre, will be hit but not all the time
 
     seen = set()
 
@@ -237,7 +220,7 @@ async def test_end_to_end_parallel_collatz_many_unreliable_tasks_async(tmpdir):
 
     MIN_NUMBER = 80
     MAX_NUMBER = 100
-    FAILURE_ODDS = 0.05  # 1 in twenty chance of failure, will be hit but not all the time
+    FAILURE_ODDS = 0.05  # 1 in twenty chance of faiulre, will be hit but not all the time
 
     seen = set()
 

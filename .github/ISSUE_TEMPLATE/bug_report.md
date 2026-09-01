@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Create a bug report to help us improve Apache Burr.
+about: Create a bug report to help us improve Burr.
 title: Bug Report
 labels: triage
 assignees: ''

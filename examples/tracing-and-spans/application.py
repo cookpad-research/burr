@@ -1,20 +1,3 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-
 from typing import Optional, Tuple
 
 import openai
@@ -69,7 +52,7 @@ def choose_mode(state: State, __tracer: TracerFactory) -> Tuple[dict, State]:
             client = _get_openai_client()
         with __tracer("query_openai") as tracer:
             result = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4",
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant"},
                     {"role": "user", "content": prompt},
@@ -107,7 +90,7 @@ def chat_response(
     state: State,
     prepend_prompt: str,
     __tracer: TracerFactory,
-    model: str = "gpt-4o-mini",
+    model: str = "gpt-3.5-turbo",
 ) -> Tuple[dict, State]:
     __tracer.log_attributes(model=model, prepend_prompt=prepend_prompt)
     with __tracer("process_chat_history"):
