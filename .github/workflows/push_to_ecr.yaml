@@ -53,7 +53,19 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
+      - name: Check whether the image is already in ECR
+        id: image-exists
+        # An existing tag is not pushed again, which an immutable repository would reject.
+        env:
+          REPOSITORY: ${{ inputs.env }}/${{ inputs.image_name }}
+          TAG: ${{ inputs.image_name }}-${{ github.sha }}
+        run: |
+          if aws ecr describe-images --repository-name "$REPOSITORY" --image-ids "imageTag=$TAG" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and push image
+        if: steps.image-exists.outputs.exists != 'true'
         working-directory: ${{ inputs.working_directory }}
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
