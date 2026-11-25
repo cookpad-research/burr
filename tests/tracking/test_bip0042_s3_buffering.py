@@ -37,6 +37,7 @@ from burr import system
 from burr.tracking.server.backend import EventDrivenBackendMixin
 from burr.tracking.server.s3 import backend as s3_backend
 from burr.tracking.server.s3.backend import (
+    DataFile,
     S3Settings,
     SQLiteS3Backend,
     TrackingMode,
@@ -563,3 +564,65 @@ class TestScanWithoutFiles:
         await backend._scan_and_update_db()
 
         backend._gather_paths_to_update.assert_awaited_once()
+
+
+class TestDataFileType:
+    @pytest.mark.parametrize(
+        "filename, file_type",
+        [
+            ("graph.json", "graph"),
+            ("metadata.json", "metadata"),
+            ("old_metadata.json", "metadata"),
+            ("0c1d__log.jsonl", "log"),
+        ],
+    )
+    def test_types_what_the_tracking_client_writes(self, filename, file_type):
+        data_file = DataFile.from_path(f"{APP_PREFIX}/{filename}", created_date=_days_ago(0))
+        assert data_file.file_type == file_type
+
+
+def _log_key(name: str) -> str:
+    return f"{APP_PREFIX}/{name}__log.jsonl"
+
+
+def _backend_without_s3():
+    backend = _minimal_backend()
+    backend._gather_log_file_data = AsyncMock(
+        side_effect=lambda files: [
+            {"tracker_id": "t", "min_sequence_id": 0, "max_sequence_id": 0} for _ in files
+        ]
+    )
+    return backend
+
+
+class TestNoDuplicateLogFiles:
+    @pytest.mark.asyncio
+    async def test_the_scan_skips_the_files_that_events_indexed(self, index_db):
+        await Project.create(name="proj", created_at=_days_ago(1), indexed_at=_days_ago(1))
+        backend = _backend_without_s3()
+        await backend._handle_s3_event(_log_key("a"), _days_ago(0))
+        # The scan at start: S3 events do not move its high watermark, so it finds "a" again.
+        backend._gather_paths_to_update = AsyncMock(
+            return_value=[
+                DataFile.from_path(_log_key(name), created_date=_days_ago(0)) for name in ("a", "b")
+            ]
+        )
+
+        await backend._scan_and_update_db()
+
+        assert sorted(await LogFile.all().values_list("s3_path", flat=True)) == [
+            _log_key("a"),
+            _log_key("b"),
+        ]
+        # Only the new file is read from S3.
+        assert [f.path for f in backend._gather_log_file_data.await_args.args[0]] == [_log_key("b")]
+
+    @pytest.mark.asyncio
+    async def test_an_event_delivered_twice_makes_one_row(self, index_db):
+        await Project.create(name="proj", created_at=_days_ago(1), indexed_at=_days_ago(1))
+        backend = _backend_without_s3()
+
+        await backend._handle_s3_event(_log_key("a"), _days_ago(0))
+        await backend._handle_s3_event(_log_key("a"), _days_ago(0))
+
+        assert await LogFile.all().count() == 1
