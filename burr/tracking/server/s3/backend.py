@@ -25,6 +25,7 @@ import json
 import logging
 import operator
 import os.path
+import sqlite3
 import tempfile
 import urllib.parse
 import uuid
@@ -196,6 +197,22 @@ class S3Settings(BurrSettings):
         return v
 
 
+def _copy_sqlite_db(source_path: str, target_path: str) -> None:
+    """Copies the index with SQLite's backup API.
+
+    The server opens the database in WAL mode, so the main file alone can miss the last writes,
+    and the event consumer can write while the file is read. The backup holds both: it is one
+    consistent database, in a single file.
+    """
+    source = sqlite3.connect(source_path)
+    target = sqlite3.connect(target_path)
+    try:
+        source.backup(target)
+    finally:
+        target.close()
+        source.close()
+
+
 def timestamp_to_reverse_alphabetical(timestamp: datetime) -> str:
     # Get the inverse of the timestamp
     epoch = datetime.datetime(1970, 1, 1, tzinfo=system.utc)
@@ -300,27 +317,37 @@ class SQLiteS3Backend(
         self._index_retention_days = index_retention_days
 
     async def load_snapshot(self):
+        """Replaces the local index with the latest snapshot in S3, if there is one.
+
+        It runs before the server opens the database. A database that is already there is
+        replaced: the server image makes an empty one (``aerich init-db``) before the server
+        starts, so keeping an existing file would never load the snapshot. With no snapshot in
+        S3, the existing database stays.
+        """
         if not self._load_snapshot_on_start:
             return
         path = settings.DB_PATH
-        # if it already exists then return
-        if os.path.exists(path):
-            return
-        if not os.path.exists(os.path.dirname(path)):
-            os.makedirs(os.path.dirname(path))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         async with self._session.create_client("s3") as client:
             objects = await client.list_objects_v2(
                 Bucket=self._bucket, Prefix=self._snapshot_prefix, MaxKeys=1
             )
             if objects["KeyCount"] == 0:
+                logger.info("No snapshot in S3: starting from the local database")
                 return
             # get the latest snapshot -- it's organized by alphabetical order
             latest_snapshot = objects["Contents"][0]
-            # download the snapshot
+            logger.info(f"Loading the snapshot at: {latest_snapshot['Key']}")
             response = await client.get_object(Bucket=self._bucket, Key=latest_snapshot["Key"])
+            download_path = f"{path}.download"
             async with response["Body"] as stream:
-                with open(path, "wb") as file:
+                with open(download_path, "wb") as file:
                     file.write(await stream.read())
+        # The old database's WAL files belong to it, not to the snapshot.
+        for suffix in ("-wal", "-shm"):
+            if os.path.exists(path + suffix):
+                os.remove(path + suffix)
+        os.replace(download_path, path)
 
     def snapshot_interval_milliseconds(self) -> Optional[int]:
         return self._snapshot_interval_milliseconds
@@ -368,16 +395,17 @@ class SQLiteS3Backend(
             await self.prune_index()
         except Exception:
             logger.exception("Failed to prune the index")
-        path = settings.DB_PATH
         timestamp = timestamp_to_reverse_alphabetical(system.now())
         # latest
         s3_key = f"{self._snapshot_prefix}/{timestamp}/{self._backend_id}/snapshot.db"
-        # TODO -- copy the path at snapshot_path to s3 using aiobotocore
         session = self._session
         logger.info(f"Saving db snapshot at: {s3_key}")
-        async with session.create_client("s3") as s3_client:
-            with open(path, "rb") as file_data:
-                await s3_client.put_object(Bucket=self._bucket, Key=s3_key, Body=file_data)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            copy_path = os.path.join(tmp_dir, "snapshot.db")
+            await asyncio.to_thread(_copy_sqlite_db, settings.DB_PATH, copy_path)
+            async with session.create_client("s3") as s3_client:
+                with open(copy_path, "rb") as file_data:
+                    await s3_client.put_object(Bucket=self._bucket, Key=s3_key, Body=file_data)
 
         self._snapshot_key_history.append(s3_key)
         if len(self._snapshot_key_history) > 5:
@@ -685,7 +713,10 @@ class SQLiteS3Backend(
 
             # TODO -- add error catching
             status, num_files = await self._scan_and_update_db_for_project(project, indexing_job)
-            logger.info(f"Scanned: {num_files} files with status stored at ID={status.id}")
+            # A project with no files and no earlier scan has no status: a project from a
+            # snapshot whose files have all expired.
+            status_id = status.id if status is not None else None
+            logger.info(f"Scanned: {num_files} files with status stored at ID={status_id}")
 
             indexing_job.records_processed = num_files
             indexing_job.end_time = system.now()
