@@ -137,11 +137,12 @@ class DataFile:
         application_id = parts[8]
         partition_key = parts[7]
         filename = parts[9]
+        # The tracking client writes metadata.json; _metadata.json is kept for older writers.
         file_type = (
             "graph"
             if filename.endswith("graph.json")
             else "metadata"
-            if filename.endswith("_metadata.json")
+            if filename == "metadata.json" or filename.endswith("_metadata.json")
             else "log"
         )
 
@@ -638,9 +639,21 @@ class SQLiteS3Backend(
     async def update_log_files(
         self, paths_to_update: Sequence[DataFile], all_applications: Sequence[Application]
     ):
-        log_data = [path for path in paths_to_update if path.file_type == "log"]
-        logfile_objects = await self._gather_log_file_data(log_data)
         key_to_application_map = {(app.name, app.partition_key): app for app in all_applications}
+        # Skip the files already indexed: S3 events do not move the scan's high watermark, so the
+        # scan at start finds again the files that events indexed, and SQS can deliver an event
+        # more than once. A second row would show the file's attributes twice.
+        log_data_by_path = {path.path: path for path in paths_to_update if path.file_type == "log"}
+        indexed_paths = set(
+            await LogFile.filter(
+                application__id__in=[app.id for app in all_applications],
+                s3_path__in=list(log_data_by_path),
+            ).values_list("s3_path", flat=True)
+        )
+        log_data = [
+            path for s3_path, path in log_data_by_path.items() if s3_path not in indexed_paths
+        ]
+        logfile_objects = await self._gather_log_file_data(log_data)
 
         # TODO -- gather referenced apps (parent pointers) and get the map of IDs to names
 
