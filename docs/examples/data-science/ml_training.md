@@ -1,3 +1,22 @@
+<!--
+     Licensed to the Apache Software Foundation (ASF) under one
+     or more contributor license agreements.  See the NOTICE file
+     distributed with this work for additional information
+     regarding copyright ownership.  The ASF licenses this file
+     to you under the Apache License, Version 2.0 (the
+     "License"); you may not use this file except in compliance
+     with the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing,
+     software distributed under the License is distributed on an
+     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+     KIND, either express or implied.  See the License for the
+     specific language governing permissions and limitations
+     under the License.
+-->
+
 # Hyperparameter tuning
 
 Hyperparameter tuning is a key part of training machine learning models. For use-cases ranging from grid-search
@@ -5,7 +24,7 @@ to gaussian processes, ``burr`` is a simple way to implement robust, failure-res
 track of hyperparameters and metrics and feeding these into a decision function to determine where to look next.
 ``burr``'s state machine can help you write and manage that process.
 
-This is a WIP! Please see the placeholder/example sketch in the [repository](https://github.com/DAGWorks-Inc/burr/tree/main/examples/ml-training) and contribute back if you have ideas via associated issue [here](https://github.com/DAGWorks-Inc/burr/issues/138).
+This is a WIP! Please see the placeholder/example sketch in the [repository](https://github.com/apache/burr/tree/main/examples/ml-training) and contribute back if you have ideas via associated issue [here](https://github.com/apache/burr/issues/138).
 
 ## High-level view
 
@@ -40,7 +59,7 @@ you can use Burr hooks to log metrics, visualize, etc... at each step. This allo
 
 While some models are trained in a single-shot and shipped to production, many require human input.
 Burr can be used to express training, then checkpoint/pause the state while a human is evaluating it,
-and have their input (e.g. go/no-go) passed in as an [input parameter](https://burr.dagworks.io/concepts/actions/#runtime-inputs).
+and have their input (e.g. go/no-go) passed in as an [input parameter](https://burr.apache.org/concepts/actions/#runtime-inputs).
 
 Note that this still requires a scheduling tool (say a task executor that runs until the next human input is needed),
 but that task executor does not need to be complicated (all it needs to do is run a job when prompted, and possibly on a chron schedule).

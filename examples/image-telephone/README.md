@@ -1,3 +1,22 @@
+<!--
+     Licensed to the Apache Software Foundation (ASF) under one
+     or more contributor license agreements.  See the NOTICE file
+     distributed with this work for additional information
+     regarding copyright ownership.  The ASF licenses this file
+     to you under the Apache License, Version 2.0 (the
+     "License"); you may not use this file except in compliance
+     with the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing,
+     software distributed under the License is distributed on an
+     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+     KIND, either express or implied.  See the License for the
+     specific language governing permissions and limitations
+     under the License.
+-->
+
 # Image Telephone
 
 This example demonstrates how to play telephone with DALL-E and ChatGPT. See some examples of the outputs
@@ -10,7 +29,7 @@ that talks to itself to do something fun. The game is simple:
 2. That caption is then provided to DALL-E, which generates an image based on the caption, which is saved to state.
 3. The loop repeats -- and you have encoded the game of telephone!
 
-Specifically, each action here in Burr is delegated to the [Hamilton](https://github.com/dagworks-inc/hamilton) micro-framework to run.
+Specifically, each action here in Burr is delegated to the [Hamilton](https://github.com/apache/hamilton) micro-framework to run.
 Hamilton is a great replacement for tools like LCEL, because it's built to provide a great SDLC experience, in addition
 to being lightweight, extensible and more general
 purpose (e.g. it's great for expressing things data processing, ML, and web-request logic). We're using
@@ -25,7 +44,7 @@ We recommend starting with the notebook.
 
 ### notebook.ipynb
 You can use [notebook.ipynb](./notebook.ipynb) to run things. Or
-<a target="_blank" href="https://colab.research.google.com/github/DAGWorks-Inc/burr/blob/main/examples/image-telephone/notebook.ipynb">
+<a target="_blank" href="https://colab.research.google.com/github/apache/burr/blob/main/examples/image-telephone/notebook.ipynb">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
 
@@ -52,5 +71,5 @@ documentation for the Hamilton dataflows that are used: [captioning](https://hub
 template by overriding values, or by copying the code and modifying it yourself in 2 minutes - see instructions on the [hub](https://hub.dagworks.io/).
 
 ## Hamilton code
-For more details on the [Hamilton](https://github.com/dagworks-inc/hamilton) code and
-this [streamlit app](https://image-telephone.streamlit.app) see [this example in the Hamilton repo.](https://github.com/DAGWorks-Inc/hamilton/tree/main/examples/LLM_Workflows/image_telephone)
+For more details on the [Hamilton](https://github.com/apache/hamilton) code and
+this [streamlit app](https://image-telephone.streamlit.app) see [this example in the Hamilton repo.](https://github.com/apache/hamilton/tree/main/examples/LLM_Workflows/image_telephone)

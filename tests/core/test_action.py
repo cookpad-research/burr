@@ -1,3 +1,20 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 import asyncio
 from typing import AsyncGenerator, Generator, Optional, Tuple, cast
 
@@ -21,6 +38,7 @@ from burr.core.action import (
     default,
     derive_inputs_from_fn,
     streaming_action,
+    type_eraser,
 )
 
 
@@ -109,6 +127,171 @@ def test_condition_when_complex():
     assert cond.run(State({"foo": "baz", "baz": "corge"})) == {Condition.KEY: False}
 
 
+# --- when() operator tests ---
+
+
+@pytest.mark.parametrize(
+    "kwargs,state_dict,expected",
+    [
+        # __eq (explicit equality)
+        ({"age__eq": 18}, {"age": 18}, True),
+        ({"age__eq": 18}, {"age": 19}, False),
+        # __ne (not equal)
+        ({"age__ne": 0}, {"age": 5}, True),
+        ({"age__ne": 0}, {"age": 0}, False),
+        # __gt (greater than)
+        ({"age__gt": 18}, {"age": 19}, True),
+        ({"age__gt": 18}, {"age": 18}, False),
+        ({"age__gt": 18}, {"age": 17}, False),
+        # __gte (greater than or equal)
+        ({"age__gte": 18}, {"age": 19}, True),
+        ({"age__gte": 18}, {"age": 18}, True),
+        ({"age__gte": 18}, {"age": 17}, False),
+        # __lt (less than)
+        ({"age__lt": 18}, {"age": 17}, True),
+        ({"age__lt": 18}, {"age": 18}, False),
+        ({"age__lt": 18}, {"age": 19}, False),
+        # __lte (less than or equal)
+        ({"age__lte": 18}, {"age": 17}, True),
+        ({"age__lte": 18}, {"age": 18}, True),
+        ({"age__lte": 18}, {"age": 19}, False),
+        # __in (membership)
+        ({"status__in": ["active", "pending"]}, {"status": "active"}, True),
+        ({"status__in": ["active", "pending"]}, {"status": "pending"}, True),
+        ({"status__in": ["active", "pending"]}, {"status": "banned"}, False),
+        # __notin (not in)
+        ({"status__notin": ["banned", "suspended"]}, {"status": "active"}, True),
+        ({"status__notin": ["banned", "suspended"]}, {"status": "banned"}, False),
+        # __contains (collection contains value)
+        ({"tags__contains": "python"}, {"tags": ["python", "java"]}, True),
+        ({"tags__contains": "go"}, {"tags": ["python", "java"]}, False),
+        ({"text__contains": "hello"}, {"text": "say hello world"}, True),
+        ({"text__contains": "goodbye"}, {"text": "say hello world"}, False),
+        # __is (identity)
+        ({"value__is": None}, {"value": None}, True),
+        ({"value__is": None}, {"value": 0}, False),
+        ({"value__is": True}, {"value": True}, True),
+        ({"value__is": True}, {"value": 1}, False),
+        # __isnot (not identity)
+        ({"value__isnot": None}, {"value": "hello"}, True),
+        ({"value__isnot": None}, {"value": None}, False),
+    ],
+    ids=[
+        "eq-match",
+        "eq-no-match",
+        "ne-different",
+        "ne-same",
+        "gt-above",
+        "gt-equal",
+        "gt-below",
+        "gte-above",
+        "gte-equal",
+        "gte-below",
+        "lt-below",
+        "lt-equal",
+        "lt-above",
+        "lte-below",
+        "lte-equal",
+        "lte-above",
+        "in-first",
+        "in-second",
+        "in-missing",
+        "notin-absent",
+        "notin-present",
+        "contains-list-match",
+        "contains-list-no-match",
+        "contains-str-match",
+        "contains-str-no-match",
+        "is-none-match",
+        "is-none-no-match",
+        "is-true-match",
+        "is-true-not-identical",
+        "isnot-not-none",
+        "isnot-is-none",
+    ],
+)
+def test_condition_when_operators(kwargs, state_dict, expected):
+    cond = Condition.when(**kwargs)
+    assert cond.run(State(state_dict)) == {Condition.KEY: expected}
+
+
+@pytest.mark.parametrize(
+    "kwargs,expected_reads",
+    [
+        ({"age__gte": 18}, ["age"]),
+        ({"status__in": ["a"]}, ["status"]),
+        ({"tags__contains": "x"}, ["tags"]),
+        ({"age__gte": 18, "status": "active"}, ["age", "status"]),
+        # same key with different operators
+        ({"age__gte": 10, "age__lt": 20}, ["age"]),
+    ],
+    ids=["gte", "in", "contains", "mixed", "same-key-two-ops"],
+)
+def test_condition_when_operators_reads(kwargs, expected_reads):
+    cond = Condition.when(**kwargs)
+    assert sorted(cond.reads) == sorted(expected_reads)
+
+
+@pytest.mark.parametrize(
+    "kwargs,expected_name",
+    [
+        ({"age__gte": 18}, "age>=18"),
+        ({"age__lt": 5}, "age<5"),
+        ({"age__ne": 0}, "age!=0"),
+        ({"status__in": ["a", "b"]}, "status in ['a', 'b']"),
+        ({"status__notin": ["x"]}, "status not in ['x']"),
+        ({"tags__contains": "py"}, "tags contains 'py'"),
+        ({"value__is": None}, "value is None"),
+        ({"value__isnot": None}, "value is not None"),
+        # plain equality still uses old format
+        ({"foo": "bar"}, "foo=bar"),
+        ({"foo": "bar", "baz": "qux"}, "baz=qux, foo=bar"),
+    ],
+    ids=["gte", "lt", "ne", "in", "notin", "contains", "is", "isnot", "plain-eq", "plain-multi"],
+)
+def test_condition_when_operators_name(kwargs, expected_name):
+    cond = Condition.when(**kwargs)
+    assert cond.name == expected_name
+
+
+def test_condition_when_operators_combined():
+    """Test multiple operators ANDed together."""
+    cond = Condition.when(age__gte=18, status="active", score__lt=100)
+    assert cond.run(State({"age": 20, "status": "active", "score": 50})) == {Condition.KEY: True}
+    assert cond.run(State({"age": 17, "status": "active", "score": 50})) == {Condition.KEY: False}
+    assert cond.run(State({"age": 20, "status": "inactive", "score": 50})) == {Condition.KEY: False}
+    assert cond.run(State({"age": 20, "status": "active", "score": 100})) == {Condition.KEY: False}
+
+
+def test_condition_when_operators_with_invert():
+    """Ensure operator-based conditions work with ~ (invert)."""
+    cond = ~Condition.when(age__gte=18)
+    assert cond.run(State({"age": 17})) == {Condition.KEY: True}
+    assert cond.run(State({"age": 18})) == {Condition.KEY: False}
+
+
+def test_condition_when_operators_with_or():
+    """Ensure operator-based conditions work with | (or)."""
+    cond = Condition.when(age__lt=13) | Condition.when(age__gte=65)
+    assert cond.run(State({"age": 10})) == {Condition.KEY: True}
+    assert cond.run(State({"age": 70})) == {Condition.KEY: True}
+    assert cond.run(State({"age": 30})) == {Condition.KEY: False}
+
+
+def test_condition_when_operators_with_and():
+    """Ensure operator-based conditions work with & (and)."""
+    cond = Condition.when(age__gte=18) & Condition.when(age__lt=65)
+    assert cond.run(State({"age": 30})) == {Condition.KEY: True}
+    assert cond.run(State({"age": 17})) == {Condition.KEY: False}
+    assert cond.run(State({"age": 65})) == {Condition.KEY: False}
+
+
+def test_condition_when_invalid_key():
+    """Empty state key before operator suffix should raise."""
+    with pytest.raises(ValueError, match="no state key"):
+        Condition.when(__gte=18)
+
+
 def test_condition_default():
     cond = default
     assert cond.name == "default"
@@ -132,6 +315,269 @@ def test_condition_expr_complex():
     assert cond.run(State({"foo": "baz", "baz": "qux"})) == {Condition.KEY: False}
     assert cond.run(State({"foo": "bar", "baz": "corge"})) == {Condition.KEY: False}
     assert cond.run(State({"foo": "baz", "baz": "corge"})) == {Condition.KEY: False}
+
+
+# ---------------------------------------------------------------------------
+# Condition.safe_expr -- restricted-AST evaluator
+# ---------------------------------------------------------------------------
+
+
+# --- positive cases: every allowed grammar construct ------------------------
+
+
+def test_safe_expr_basic_equality():
+    cond = Condition.safe_expr("foo == 'bar'")
+    assert cond.name == "foo == 'bar'"
+    assert cond.reads == ["foo"]
+    assert cond.run(State({"foo": "bar"})) == {Condition.KEY: True}
+    assert cond.run(State({"foo": "baz"})) == {Condition.KEY: False}
+
+
+def test_safe_expr_all_comparisons():
+    cases = [
+        ("x < 5", {"x": 4}, True),
+        ("x <= 5", {"x": 5}, True),
+        ("x > 5", {"x": 6}, True),
+        ("x >= 5", {"x": 5}, True),
+        ("x != 5", {"x": 4}, True),
+        ("x in items", {"x": 2, "items": [1, 2, 3]}, True),
+        ("x not in items", {"x": 9, "items": [1, 2, 3]}, True),
+        ("x is None", {"x": None}, True),
+        ("x is not None", {"x": 1}, True),
+    ]
+    for expr_str, state, expected in cases:
+        cond = Condition.safe_expr(expr_str)
+        assert cond.run(State(state)) == {Condition.KEY: expected}, expr_str
+
+
+def test_safe_expr_chained_comparison():
+    cond = Condition.safe_expr("0 < x < 10")
+    assert cond.run(State({"x": 5})) == {Condition.KEY: True}
+    assert cond.run(State({"x": 11})) == {Condition.KEY: False}
+
+
+def test_safe_expr_boolean_ops_nested():
+    cond = Condition.safe_expr("(a > 0 and b < 10) or c == 'ok'")
+    assert sorted(cond.reads) == ["a", "b", "c"]
+    assert cond.run(State({"a": 1, "b": 5, "c": "no"})) == {Condition.KEY: True}
+    assert cond.run(State({"a": -1, "b": 5, "c": "ok"})) == {Condition.KEY: True}
+    assert cond.run(State({"a": -1, "b": 5, "c": "no"})) == {Condition.KEY: False}
+
+
+def test_safe_expr_arithmetic():
+    cond = Condition.safe_expr("(a + b) * 2 - c / 2 == 9.0")
+    assert cond.run(State({"a": 1, "b": 2, "c": 2})) == {Condition.KEY: False}
+    # (1+2)*2 - 4/2 = 6 - 2 = 4
+    cond2 = Condition.safe_expr("(a + b) * 2 - c // 2")
+    assert _eval_value(cond2, {"a": 1, "b": 2, "c": 5}) == 6 - 2
+
+
+def test_safe_expr_arithmetic_mod_pow():
+    assert _eval_value(Condition.safe_expr("x % 3"), {"x": 10}) == 1
+    assert _eval_value(Condition.safe_expr("x ** 3"), {"x": 2}) == 8
+
+
+def test_safe_expr_unary_ops():
+    assert _eval_value(Condition.safe_expr("-x"), {"x": 3}) == -3
+    assert _eval_value(Condition.safe_expr("+x"), {"x": 3}) == 3
+    assert Condition.safe_expr("not flag").run(State({"flag": False})) == {Condition.KEY: True}
+
+
+def test_safe_expr_negative_literal():
+    cond = Condition.safe_expr("x == -1")
+    assert cond.run(State({"x": -1})) == {Condition.KEY: True}
+
+
+def test_safe_expr_none_comparison():
+    cond = Condition.safe_expr("x is None")
+    assert cond.run(State({"x": None})) == {Condition.KEY: True}
+    assert cond.run(State({"x": 0})) == {Condition.KEY: False}
+
+
+def test_safe_expr_subscript_index_and_slice():
+    cond = Condition.safe_expr("items[0] == 'a'")
+    assert cond.run(State({"items": ["a", "b"]})) == {Condition.KEY: True}
+    cond2 = Condition.safe_expr("mapping['k'] == 1")
+    assert cond2.run(State({"mapping": {"k": 1}})) == {Condition.KEY: True}
+    assert _eval_value(Condition.safe_expr("items[1:3]"), {"items": [0, 1, 2, 3]}) == [1, 2]
+
+
+def test_safe_expr_attribute_access():
+    class Obj:
+        def __init__(self):
+            self.val = 42
+
+    cond = Condition.safe_expr("obj.val == 42")
+    assert cond.run(State({"obj": Obj()})) == {Condition.KEY: True}
+
+
+def test_safe_expr_literal_containers():
+    assert _eval_value(Condition.safe_expr("[1, 2, 3]"), {}) == [1, 2, 3]
+    assert _eval_value(Condition.safe_expr("(1, 2, 3)"), {}) == (1, 2, 3)
+    assert _eval_value(Condition.safe_expr("{1, 2, 3}"), {}) == {1, 2, 3}
+    assert _eval_value(Condition.safe_expr("{'a': 1, 'b': 2}"), {}) == {"a": 1, "b": 2}
+
+
+def test_safe_expr_all_allowed_builtins():
+    pairs = [
+        ("len(items)", {"items": [1, 2, 3]}, 3),
+        ("abs(x)", {"x": -4}, 4),
+        ("min(a, b)", {"a": 1, "b": 2}, 1),
+        ("max(a, b)", {"a": 1, "b": 2}, 2),
+        ("sum(items)", {"items": [1, 2, 3]}, 6),
+        ("all(items)", {"items": [True, True]}, True),
+        ("any(items)", {"items": [False, True]}, True),
+        ("str(x)", {"x": 5}, "5"),
+        ("int(x)", {"x": "5"}, 5),
+        ("float(x)", {"x": "1.5"}, 1.5),
+        ("bool(x)", {"x": 0}, False),
+    ]
+    for expr_str, state, expected in pairs:
+        assert _eval_value(Condition.safe_expr(expr_str), state) == expected, expr_str
+
+
+def test_safe_expr_reads_collected_correctly():
+    cond = Condition.safe_expr("foo == 'bar' and len(baz) == 3")
+    assert sorted(cond.reads) == ["baz", "foo"]
+
+
+def test_safe_expr_only_name_lookup_no_attributes():
+    """Edge case: an expression that uses *only* Name lookups still works."""
+    cond = Condition.safe_expr("a and b")
+    assert cond.run(State({"a": True, "b": True})) == {Condition.KEY: True}
+    assert cond.run(State({"a": True, "b": False})) == {Condition.KEY: False}
+
+
+def test_safe_expr_validate_missing_state_key():
+    cond = Condition.safe_expr("foo == 'bar'")
+    with pytest.raises(ValueError, match="foo"):
+        cond._validate(State({"baz": "bar"}))
+
+
+# --- determinism ------------------------------------------------------------
+
+
+def test_safe_expr_determinism_success():
+    state = State({"x": 5, "y": 3})
+    cond_a = Condition.safe_expr("x + y == 8")
+    cond_b = Condition.safe_expr("x + y == 8")
+    assert cond_a.run(state) == cond_b.run(state) == {Condition.KEY: True}
+    # Same condition, called twice, identical state -> identical result.
+    assert cond_a.run(state) == cond_a.run(state)
+
+
+def test_safe_expr_determinism_rejection():
+    # Same disallowed expression rejected the same way every time, at call time.
+    for _ in range(3):
+        with pytest.raises(ValueError):
+            Condition.safe_expr("lambda: 1")
+
+
+# --- negative cases: every rejected node category ---------------------------
+
+
+@pytest.mark.parametrize(
+    "expr_str",
+    [
+        # Attack patterns explicitly called out in the issue:
+        '__import__("os").system("touch /tmp/pwn")',
+        "(0).__class__.__bases__[0].__subclasses__()",
+        'open("/etc/passwd").read()',
+        "lambda: 1",
+        "[x for x in range(10)]",
+        # Other rejected categories:
+        "{x for x in range(10)}",  # set comp
+        "{x: x for x in range(10)}",  # dict comp
+        "(x for x in range(10))",  # generator exp
+        "1 if a else 2",  # IfExp
+        "(x := 5) > 0",  # walrus / NamedExpr
+        "foo()",  # Call to non-allowlisted name
+        "foo.bar()",  # Call via Attribute (indirect)
+        "obj.__class__",  # dunder attribute
+        "obj.__dict__",  # dunder attribute
+        "len(items, key=str)",  # keyword arg to builtin
+        "min(*items)",  # starred arg
+        "a & b",  # bitwise (not on allowlist)
+        "a | b",  # bitwise (not on allowlist)
+        "a << 1",  # bitshift
+        "f'hello {name}'",  # f-string / JoinedStr
+        "...",  # Ellipsis constant
+        "b'bytes'",  # bytes constant
+    ],
+)
+def test_safe_expr_rejects_at_call_time(expr_str):
+    """Every disallowed construct must raise at safe_expr() call time, not at run time."""
+    with pytest.raises((ValueError, SyntaxError)):
+        Condition.safe_expr(expr_str)
+
+
+def test_safe_expr_rejects_import_dunder_attack():
+    # `__import__("os").system(...)` -- the disallowed thing here is the dunder
+    # Name reference; we reject because `__import__` resolves nowhere (not a
+    # safe builtin, not in state), but specifically Call to non-allowlisted name.
+    with pytest.raises(ValueError, match="(?i)disallowed"):
+        Condition.safe_expr('__import__("os").system("touch /tmp/pwn")')
+
+
+def test_safe_expr_rejects_class_bases_sandbox_escape():
+    # The expression is rejected -- could be on either the dunder attribute
+    # access OR the call to a non-allowlisted name (the validator hits the
+    # outer Call first). Either rejection closes the escape; we just confirm
+    # the expression doesn't make it to a Condition.
+    with pytest.raises(ValueError, match="(?i)disallowed"):
+        Condition.safe_expr("(0).__class__.__bases__[0].__subclasses__()")
+    # And the bare dunder attribute (no call) is rejected with the dunder reason.
+    with pytest.raises(ValueError, match="(?i)dunder"):
+        Condition.safe_expr("(0).__class__")
+
+
+def test_safe_expr_rejects_open_call():
+    with pytest.raises(ValueError, match="(?i)disallowed"):
+        Condition.safe_expr('open("/etc/passwd").read()')
+
+
+def test_safe_expr_rejects_lambda():
+    with pytest.raises(ValueError):
+        Condition.safe_expr("lambda x: x")
+
+
+def test_safe_expr_rejects_list_comprehension():
+    with pytest.raises(ValueError):
+        Condition.safe_expr("[x for x in range(10)]")
+
+
+def test_safe_expr_rejects_syntax_error():
+    with pytest.raises(SyntaxError):
+        Condition.safe_expr("foo == ")
+
+
+def test_safe_expr_does_not_eval_during_validation():
+    """If validation accidentally executed code, this would raise at call time.
+
+    Build an expression that *would* error at run time but is syntactically
+    allowed. Confirm safe_expr() returns a Condition without raising; the
+    error only happens when .run() is called.
+    """
+    cond = Condition.safe_expr("1 / x")  # ZeroDivisionError at run time only
+    with pytest.raises(ZeroDivisionError):
+        cond.run(State({"x": 0}))
+
+
+def _eval_value(cond: Condition, state: dict):
+    """Helper: get the raw (pre-bool-coerce) interpreter result for a safe_expr.
+
+    ``Condition.safe_expr`` wraps the interpreter result in ``bool()`` because
+    a Condition is fundamentally a predicate. For tests of arithmetic /
+    container / builtin expressions we want the underlying value, so we
+    re-parse-and-interpret using the same internal machinery. This mirrors
+    what the Condition does at run time minus the ``bool()`` cast.
+    """
+    import ast as _ast
+
+    from burr.core.action import _SafeExprInterpreter  # type: ignore
+
+    tree = _ast.parse(cond.name, mode="eval")
+    return _SafeExprInterpreter(state).eval(tree)
 
 
 def test_condition__validate_success():
@@ -314,7 +760,7 @@ def test_function_based_action_with_defaults():
 
 
 def test_function_based_action_with_defaults_unbound():
-    # inputs can have defaults -- this tests that we treat them propertly
+    # inputs can have defaults -- this tests that we treat them properly
     @action(reads=["input_variable"], writes=["output_variable"])
     def my_action(
         state: State, unbound_input_1: int, unbound_input_2: int, unbound_default_input: int = 1000
@@ -806,3 +1252,198 @@ def test_non_existent_bound_parameters():
     required, optional = derive_inputs_from_fn(bound_params, fn)
     assert required == []
     assert optional == []
+
+
+def test_undeclared_state_read_raises_error():
+    with pytest.raises(ValueError):
+
+        @action(reads=["foo"], writes=[])
+        def bad_action(state: State):
+            _ = state["bar"]
+            return {}, state
+
+
+def test_declared_state_read_passes():
+    @action(reads=["foo"], writes=[])
+    def good_action(state: State):
+        _ = state["foo"]
+        return {}, state
+
+
+def test_multiple_undeclared_reads_interleaved():
+    with pytest.raises(ValueError) as exc:
+
+        @action(reads=["foo"], writes=[])
+        def bad_action(state: State):
+            _ = state["foo"]
+            _ = state["bar"]
+            _ = state["baz"]
+            return {}, state
+
+    message = str(exc.value)
+    assert "bar" in message
+    assert "baz" in message
+
+
+def test_pydantic_action_not_impacted():
+    try:
+        from pydantic import BaseModel
+    except ImportError:
+        pytest.skip("pydantic not installed")
+
+    class MyState(BaseModel):
+        foo: str
+
+    @action.pydantic(
+        reads=["foo"],
+        writes=["foo"],
+        state_input_type=MyState,
+        state_output_type=MyState,
+    )
+    def good_action(state: MyState):
+        return {"foo": state.foo}
+
+    # ensure decoration didn't raise and action is creatable
+    from burr.core.action import create_action
+
+    create_action(good_action, name="test")
+
+
+class TestTypeEraser:
+    def test_sync_run(self):
+        class MyAction(Action):
+            @property
+            def reads(self) -> list[str]:
+                return ["counter"]
+
+            @type_eraser
+            def run(self, state: State, increment_by: int) -> dict:
+                return {"counter": state["counter"] + increment_by}
+
+            @property
+            def writes(self) -> list[str]:
+                return ["counter"]
+
+            def update(self, result: dict, state: State) -> State:
+                return state.update(**result)
+
+            @property
+            def inputs(self) -> list[str]:
+                return ["increment_by"]
+
+        a = MyAction()
+        result = a.run(State({"counter": 0}), increment_by=5)
+        assert result == {"counter": 5}
+        assert a.is_async() is False
+
+    def test_async_run(self):
+        class MyAsyncAction(Action):
+            @property
+            def reads(self) -> list[str]:
+                return ["counter"]
+
+            @type_eraser
+            async def run(self, state: State, increment_by: int) -> dict:
+                return {"counter": state["counter"] + increment_by}
+
+            @property
+            def writes(self) -> list[str]:
+                return ["counter"]
+
+            def update(self, result: dict, state: State) -> State:
+                return state.update(**result)
+
+            @property
+            def inputs(self) -> list[str]:
+                return ["increment_by"]
+
+        a = MyAsyncAction()
+        assert a.is_async() is True
+        result = asyncio.run(a.run(State({"counter": 0}), increment_by=5))
+        assert result == {"counter": 5}
+
+    def test_sync_stream_run(self):
+        class MyStreamingAction(StreamingAction):
+            @property
+            def reads(self) -> list[str]:
+                return ["items"]
+
+            @type_eraser
+            def stream_run(self, state: State, prefix: str) -> Generator[dict, None, None]:
+                for item in state["items"]:
+                    yield {"val": f"{prefix}_{item}"}
+
+            @property
+            def writes(self) -> list[str]:
+                return ["result"]
+
+            def update(self, result: dict, state: State) -> State:
+                return state.update(**result)
+
+            @property
+            def inputs(self) -> list[str]:
+                return ["prefix"]
+
+        a = MyStreamingAction()
+        results = list(a.stream_run(State({"items": ["a", "b"]}), prefix="x"))
+        assert results == [{"val": "x_a"}, {"val": "x_b"}]
+
+    def test_async_stream_run(self):
+        class MyAsyncStreamingAction(AsyncStreamingAction):
+            @property
+            def reads(self) -> list[str]:
+                return ["items"]
+
+            @type_eraser
+            async def stream_run(self, state: State, prefix: str) -> AsyncGenerator[dict, None]:
+                for item in state["items"]:
+                    yield {"val": f"{prefix}_{item}"}
+
+            @property
+            def writes(self) -> list[str]:
+                return ["result"]
+
+            def update(self, result: dict, state: State) -> State:
+                return state.update(**result)
+
+            @property
+            def inputs(self) -> list[str]:
+                return ["prefix"]
+
+        a = MyAsyncStreamingAction()
+        assert a.is_async() is True
+
+        async def collect():
+            return [item async for item in a.stream_run(State({"items": ["a", "b"]}), prefix="x")]
+
+        results = asyncio.run(collect())
+        assert results == [{"val": "x_a"}, {"val": "x_b"}]
+
+    def test_preserves_wrapped_name(self):
+        class MyAction(Action):
+            @property
+            def reads(self) -> list[str]:
+                return []
+
+            @type_eraser
+            def run(self, state: State, custom_param: str) -> dict:
+                return {}
+
+            @property
+            def writes(self) -> list[str]:
+                return []
+
+            def update(self, result: dict, state: State) -> State:
+                return state
+
+            @property
+            def inputs(self) -> list[str]:
+                return []
+
+        assert MyAction().run.__name__ == "run"
+        assert MyAction().run.__wrapped__.__name__ == "run"
+
+    def test_exported_from_burr_core(self):
+        from burr.core import type_eraser as te
+
+        assert te is type_eraser

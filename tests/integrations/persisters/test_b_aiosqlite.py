@@ -1,3 +1,20 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 import asyncio
 from typing import Tuple
 
@@ -6,17 +23,6 @@ import pytest
 
 from burr.core import ApplicationBuilder, State, action
 from burr.integrations.persisters.b_aiosqlite import AsyncSQLitePersister
-
-
-class AsyncSQLiteContextManager:
-    def __init__(self, sqlite_object):
-        self.client = sqlite_object
-
-    async def __aenter__(self):
-        return self.client
-
-    async def __aexit__(self, exc_type, exc, tb):
-        await self.client.cleanup()
 
 
 async def test_copy_persister(async_persistence: AsyncSQLitePersister):
@@ -28,11 +34,9 @@ async def test_copy_persister(async_persistence: AsyncSQLitePersister):
 
 @pytest.fixture()
 async def async_persistence(request):
-    sqlite_persister = await AsyncSQLitePersister.from_values(
+    async with AsyncSQLitePersister.from_values(
         db_path=":memory:", table_name="test_table"
-    )
-    async_context_manager = AsyncSQLiteContextManager(sqlite_persister)
-    async with async_context_manager as client:
+    ) as client:
         yield client
 
 
@@ -101,6 +105,50 @@ async def test_async_persister_methods_none_partition_key(
     # these operations are stateful (i.e., read/write to a db)
 
 
+async def test_async_sqlite_from_values_as_context_manager(tmp_path):
+    """Test that from_values works directly with async with (issue #546)."""
+    db_path = str(tmp_path / "test.db")
+    async with AsyncSQLitePersister.from_values(db_path=db_path) as persister:
+        await persister.initialize()
+        await persister.save("pk", "app1", 1, "pos", State({"k": "v"}), "completed")
+        loaded = await persister.load("pk", "app1")
+        assert loaded is not None
+        assert loaded["state"] == State({"k": "v"})
+
+
+async def test_async_sqlite_from_config_as_context_manager(tmp_path):
+    """Test that from_config works directly with async with (issue #546)."""
+    db_path = str(tmp_path / "test.db")
+    config = {"db_path": db_path, "table_name": "burr_state"}
+    async with AsyncSQLitePersister.from_config(config) as persister:
+        await persister.initialize()
+        await persister.save("pk", "app1", 1, "pos", State({"k": "v"}), "completed")
+        loaded = await persister.load("pk", "app1")
+        assert loaded is not None
+
+
+async def test_async_sqlite_from_values_cannot_be_consumed_twice():
+    """Test that the factory wrapper raises on double consumption."""
+    wrapper = AsyncSQLitePersister.from_values(db_path=":memory:")
+    persister = await wrapper
+    with pytest.raises(RuntimeError, match="already been consumed"):
+        await wrapper
+    await persister.cleanup()
+
+
+async def test_async_sqlite_context_manager_aexit_safe_on_failed_aenter(tmp_path):
+    """Test that __aexit__ doesn't crash if __aenter__ never completed."""
+    from burr.common.async_utils import _AsyncPersisterContextManager
+
+    async def _failing_create():
+        raise ConnectionError("simulated connection failure")
+
+    mgr = _AsyncPersisterContextManager(_failing_create())
+    with pytest.raises(ConnectionError, match="simulated connection failure"):
+        async with mgr:
+            pass  # should never reach here
+
+
 async def test_AsyncSQLitePersister_from_values():
     await asyncio.sleep(0.00001)
     connection = await aiosqlite.connect(":memory:")
@@ -128,11 +176,9 @@ async def test_AsyncSQLitePersister_connection_shutdown():
 
 @pytest.fixture()
 async def initializing_async_persistence():
-    sqlite_persister = await AsyncSQLitePersister.from_values(
+    async with AsyncSQLitePersister.from_values(
         db_path=":memory:", table_name="test_table"
-    )
-    async_context_manager = AsyncSQLiteContextManager(sqlite_persister)
-    async with async_context_manager as client:
+    ) as client:
         yield client
 
 

@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 import { HomeIcon } from '@heroicons/react/20/solid';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -48,11 +67,13 @@ export const BreadCrumb = () => {
                     <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
                   </svg>
                   {isNullPK ? (
-                    <span className="ml-4 text-sm font-medium text-gray-200">no primary key</span>
+                    <span className="ml-4 text-sm font-medium text-gray-200 dark:text-gray-600">
+                      no primary key
+                    </span>
                   ) : (
                     <Link
                       to={page.href}
-                      className="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700"
+                      className="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                       aria-current={page.current ? 'page' : undefined}
                     >
                       {decodeURIComponent(page.name)}

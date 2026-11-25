@@ -1,3 +1,20 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 import abc
 import dataclasses
 import datetime
@@ -190,6 +207,7 @@ class LocalTrackingClient(
         fork_parent_pointer_model: Optional[burr_types.ParentPointer],
         spawn_parent_pointer_model: Optional[burr_types.ParentPointer],
         app_id: str,
+        partition_key: Optional[str] = None,
     ):
         """Logs a child relationship. This is special as it does not log to the main log file. Rather
         it logs within the parent directory. Note this only exists to maintain (denormalized) bidirectional
@@ -210,7 +228,7 @@ class LocalTrackingClient(
                         child=PointerModel(
                             app_id=app_id,
                             sequence_id=None,
-                            partition_key=None,  # TODO -- get partition key
+                            partition_key=partition_key,
                         ),
                         event_time=datetime.datetime.now(),
                         event_type="fork",
@@ -228,7 +246,7 @@ class LocalTrackingClient(
                         child=PointerModel(
                             app_id=app_id,
                             sequence_id=None,
-                            partition_key=None,  # TODO -- get partition key
+                            partition_key=partition_key,
                         ),
                         event_time=datetime.datetime.now(),
                         event_type="spawn_start",
@@ -419,6 +437,7 @@ class LocalTrackingClient(
             parent_pointer,
             spawning_parent_pointer,
             app_id,
+            partition_key=partition_key,
         )
 
     def _append_write_line(self, model: pydantic.BaseModel):

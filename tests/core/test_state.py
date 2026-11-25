@@ -1,3 +1,20 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 from typing import Any
 
 import pytest
@@ -209,3 +226,17 @@ def test_state_apply_keeps_typing_system():
     state = State({"foo": "bar"}, typing_system=SimpleTypingSystem())
     assert state.update(foo="baz").typing_system is state.typing_system
     assert state.subset("foo").typing_system is state.typing_system
+
+
+def test_state_keys_returns_list():
+    """Test that State.keys() returns a list (fixes #409)"""
+    state = State({"a": 1, "b": 2, "c": 3})
+    keys = state.keys()
+
+    # Should return a list with the correct keys
+    assert isinstance(keys, list)
+    assert keys == ["a", "b", "c"]
+
+    # Test with empty state
+    empty_state = State()
+    assert empty_state.keys() == []
