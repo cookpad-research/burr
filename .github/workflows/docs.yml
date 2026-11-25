@@ -33,6 +33,8 @@ concurrency: ci-${{ github.ref }}
 
 jobs:
   docs:
+    # It publishes Apache's docs site and comments on the PR: only in apache/burr, not in a fork.
+    if: github.repository == 'apache/burr'
     runs-on: ubuntu-latest
     env:
       PR_PATH: pull/${{github.event.number}}
