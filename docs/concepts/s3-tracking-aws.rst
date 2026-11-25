@@ -99,12 +99,16 @@ Common S3 server environment variables:
 * ``BURR_UPDATE_INTERVAL_MILLISECONDS`` (default ``120000``)
 * ``BURR_AWS_MAX_CONCURRENCY`` (default ``100``)
 * ``BURR_SNAPSHOT_INTERVAL_MILLISECONDS`` (default ``3600000``)
-* ``BURR_LOAD_SNAPSHOT_ON_START`` (default ``True``)
+* ``BURR_LOAD_SNAPSHOT_ON_START`` (default ``True``; the latest snapshot in S3 replaces the local index at start)
 * ``BURR_PRIOR_SNAPSHOTS_TO_KEEP`` (default ``5``)
 * ``BURR_TRACKING_MODE`` (``POLLING`` or ``EVENT_DRIVEN``)
 * ``BURR_SQS_QUEUE_URL`` / ``BURR_SQS_REGION`` / ``BURR_SQS_WAIT_TIME_SECONDS``
 * ``BURR_S3_BUFFER_SIZE_MB``
 * ``BURR_INDEX_RETENTION_DAYS`` (default: keep all; set it to the bucket's lifecycle expiry)
+
+The server saves a snapshot every ``BURR_SNAPSHOT_INTERVAL_MILLISECONDS`` and once more when it
+stops (SIGTERM). In event-driven mode this matters: the consumer deletes each SQS message once it
+is indexed, so a restart without a snapshot loses those traces from the index.
 
 ---------------
 Terraform Setup

@@ -132,8 +132,9 @@ async def lifespan(app: FastAPI):
     # Download if it does it
     # For now we do this before the lifespan
     await download_snapshot()
-    # No yield from allowed
-    await backend.lifespan(app).__anext__()
+    # No yield from allowed: step the backend's lifespan by hand, and keep it to close it.
+    backend_lifespan = backend.lifespan(app)
+    await backend_lifespan.__anext__()
     await sync_index()  # this will trigger the repeat every N seconds
     await save_snapshot()  # this will trigger the repeat every N seconds
     # Start event consumer for event-driven tracking when configured
@@ -150,7 +151,19 @@ async def lifespan(app: FastAPI):
             await event_consumer_task
         except asyncio.CancelledError:
             pass
-    await backend.lifespan(app).__anext__()
+    # Save the index once more: the queue's events since the last snapshot are already deleted,
+    # so without this a restart loses up to one snapshot interval of traces.
+    if app_spec.snapshotting:
+        try:
+            await backend.snapshot()
+        except Exception:
+            logger.exception("Failed to save the snapshot at shutdown")
+    # Close the same lifespan (a new one would open the database again and keep its thread, so
+    # the process would not exit).
+    try:
+        await backend_lifespan.__anext__()
+    except StopAsyncIteration:
+        pass
 
 
 def _get_app_spec() -> BackendSpec:

@@ -21,6 +21,7 @@ import asyncio
 import datetime
 import inspect
 import json
+import sqlite3
 from unittest.mock import AsyncMock, MagicMock
 from urllib.parse import quote_plus
 
@@ -376,25 +377,135 @@ class TestPruneIndex:
         assert await Application.all().count() == 1
 
 
+def _backend_with_s3(s3, **kwargs):
+    client_cm = MagicMock()
+    client_cm.__aenter__ = AsyncMock(return_value=s3)
+    client_cm.__aexit__ = AsyncMock(return_value=None)
+    backend = _minimal_backend(**kwargs)
+    backend._session = MagicMock()
+    backend._session.create_client = MagicMock(return_value=client_cm)
+    return backend
+
+
+def _make_db(path, rows):
+    db = sqlite3.connect(path)
+    db.execute("CREATE TABLE t (v TEXT)")
+    db.executemany("INSERT INTO t VALUES (?)", [(r,) for r in rows])
+    db.commit()
+    db.close()
+
+
+def _rows(path):
+    db = sqlite3.connect(path)
+    try:
+        return [r for (r,) in db.execute("SELECT v FROM t ORDER BY v")]
+    finally:
+        db.close()
+
+
 class TestSnapshotPrunes:
     @pytest.mark.asyncio
     async def test_saves_the_snapshot_even_when_the_prune_fails(self, tmp_path, monkeypatch):
         db = tmp_path / "db.sqlite3"
-        db.write_bytes(b"db")
+        _make_db(db, ["a"])
         monkeypatch.setattr(s3_backend.settings, "DB_PATH", str(db))
         s3 = AsyncMock()
-        client_cm = MagicMock()
-        client_cm.__aenter__ = AsyncMock(return_value=s3)
-        client_cm.__aexit__ = AsyncMock(return_value=None)
-        backend = _minimal_backend(index_retention_days=30)
-        backend._session = MagicMock()
-        backend._session.create_client = MagicMock(return_value=client_cm)
+        backend = _backend_with_s3(s3, index_retention_days=30)
         backend.prune_index = AsyncMock(side_effect=RuntimeError("db locked"))
 
         await backend.snapshot()
 
         backend.prune_index.assert_awaited_once()
         s3.put_object.assert_awaited_once()
+
+
+class TestSnapshotCopy:
+    @pytest.mark.asyncio
+    async def test_the_snapshot_holds_the_writes_still_in_the_wal(self, tmp_path, monkeypatch):
+        path = tmp_path / "db.sqlite3"
+        writer = sqlite3.connect(path)
+        writer.execute("PRAGMA journal_mode=WAL")
+        writer.execute("PRAGMA wal_autocheckpoint=0")  # keep every write in the WAL
+        writer.execute("CREATE TABLE t (v TEXT)")
+        writer.execute("INSERT INTO t VALUES ('in-the-wal')")
+        writer.commit()  # the connection stays open, as the server's
+        monkeypatch.setattr(s3_backend.settings, "DB_PATH", str(path))
+        uploaded = {}
+
+        async def put_object(Bucket, Key, Body):
+            uploaded["body"] = Body.read()
+
+        s3 = AsyncMock()
+        s3.put_object = AsyncMock(side_effect=put_object)
+        try:
+            await _backend_with_s3(s3).snapshot()
+        finally:
+            writer.close()
+
+        snapshot = tmp_path / "uploaded.db"
+        snapshot.write_bytes(uploaded["body"])
+        assert _rows(snapshot) == ["in-the-wal"]
+
+
+def _snapshot_listing(key):
+    return {"KeyCount": 1, "Contents": [{"Key": key}]}
+
+
+def _s3_body(data: bytes):
+    body = MagicMock()
+    body.__aenter__ = AsyncMock(return_value=body)
+    body.__aexit__ = AsyncMock(return_value=None)
+    body.read = AsyncMock(return_value=data)
+    return {"Body": body}
+
+
+class TestLoadSnapshot:
+    @pytest.mark.asyncio
+    async def test_replaces_the_empty_database_made_at_start(self, tmp_path, monkeypatch):
+        # The image makes an empty database (aerich init-db) before the server starts.
+        path = tmp_path / "db.sqlite3"
+        _make_db(path, [])
+        (tmp_path / "db.sqlite3-wal").write_bytes(b"old wal")
+        snapshot = tmp_path / "snapshot.db"
+        _make_db(snapshot, ["from-the-snapshot"])
+        monkeypatch.setattr(s3_backend.settings, "DB_PATH", str(path))
+        s3 = AsyncMock()
+        s3.list_objects_v2 = AsyncMock(return_value=_snapshot_listing("snapshots/1/x/snapshot.db"))
+        s3.get_object = AsyncMock(return_value=_s3_body(snapshot.read_bytes()))
+
+        await _backend_with_s3(s3, load_snapshot_on_start=True).load_snapshot()
+
+        assert _rows(path) == ["from-the-snapshot"]
+        assert not (tmp_path / "db.sqlite3-wal").exists()
+        assert not (tmp_path / "db.sqlite3.download").exists()
+        s3.get_object.assert_awaited_once_with(
+            Bucket="test-bucket", Key="snapshots/1/x/snapshot.db"
+        )
+
+    @pytest.mark.asyncio
+    async def test_keeps_the_database_without_a_snapshot(self, tmp_path, monkeypatch):
+        path = tmp_path / "db.sqlite3"
+        _make_db(path, ["local"])
+        monkeypatch.setattr(s3_backend.settings, "DB_PATH", str(path))
+        s3 = AsyncMock()
+        s3.list_objects_v2 = AsyncMock(return_value={"KeyCount": 0})
+
+        await _backend_with_s3(s3, load_snapshot_on_start=True).load_snapshot()
+
+        assert _rows(path) == ["local"]
+        s3.get_object.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_does_nothing_when_turned_off(self, tmp_path, monkeypatch):
+        path = tmp_path / "db.sqlite3"
+        _make_db(path, ["local"])
+        monkeypatch.setattr(s3_backend.settings, "DB_PATH", str(path))
+        s3 = AsyncMock()
+
+        await _backend_with_s3(s3, load_snapshot_on_start=False).load_snapshot()
+
+        assert _rows(path) == ["local"]
+        s3.list_objects_v2.assert_not_awaited()
 
 
 def _s3_error(code: str) -> ClientError:
@@ -439,3 +550,16 @@ class TestGetApplicationLogsMissingFiles:
         with pytest.raises(HTTPException) as error:
             await _minimal_backend().get_application_logs(MagicMock(), "proj", "gone", "pk")
         assert error.value.status_code == 404
+
+
+class TestScanWithoutFiles:
+    @pytest.mark.asyncio
+    async def test_a_project_with_no_files_left_does_not_stop_the_scan(self, index_db):
+        # A snapshot can hold a project whose files have all expired; it has no index status.
+        await Project.create(name="expired", created_at=_days_ago(400), indexed_at=_days_ago(400))
+        backend = _minimal_backend()
+        backend._gather_paths_to_update = AsyncMock(return_value=[])
+
+        await backend._scan_and_update_db()
+
+        backend._gather_paths_to_update.assert_awaited_once()
