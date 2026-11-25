@@ -314,6 +314,38 @@ class TestStartEventConsumer:
         assert [c.args[0] for c in backend._handle_s3_event.await_args_list] == keys[:3]
         sqs.delete_message.assert_awaited_once_with(QueueUrl="https://queue", ReceiptHandle="r1")
 
+    @pytest.mark.asyncio
+    async def test_deletes_s3_test_event_and_keeps_unknown_messages(self):
+        test_event = {"Service": "Amazon S3", "Event": "s3:TestEvent", "Bucket": "b"}
+        sqs = AsyncMock()
+        sqs.receive_message = AsyncMock(
+            side_effect=[
+                {
+                    "Messages": [
+                        {"Body": json.dumps(test_event), "ReceiptHandle": "test"},
+                        {"Body": json.dumps({"foo": "bar"}), "ReceiptHandle": "unknown"},
+                    ]
+                },
+                asyncio.CancelledError(),
+            ]
+        )
+        client_cm = MagicMock()
+        client_cm.__aenter__ = AsyncMock(return_value=sqs)
+        client_cm.__aexit__ = AsyncMock(return_value=None)
+
+        backend = _minimal_backend(
+            tracking_mode=TrackingMode.EVENT_DRIVEN, sqs_queue_url="https://queue", sqs_region="r"
+        )
+        backend._session = MagicMock()
+        backend._session.create_client = MagicMock(return_value=client_cm)
+        backend._handle_s3_event = AsyncMock()
+
+        with pytest.raises(asyncio.CancelledError):
+            await backend.start_event_consumer()
+
+        backend._handle_s3_event.assert_not_awaited()
+        sqs.delete_message.assert_awaited_once_with(QueueUrl="https://queue", ReceiptHandle="test")
+
 
 @pytest.fixture
 async def index_db():

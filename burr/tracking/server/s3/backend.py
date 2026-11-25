@@ -234,8 +234,12 @@ def _parse_sqs_message_events(
     """Parse EventBridge-wrapped or native S3 notification bodies from SQS.
 
     Returns None if the format is not recognized. Multiple S3 records in one
-    message yield one tuple per record.
+    message yield one tuple per record. The test event that S3 sends when the
+    bucket notification is created yields no events, so the consumer deletes it
+    instead of leaving it to go to the dead-letter queue.
     """
+    if body.get("Event") == "s3:TestEvent":
+        return []
     if "detail" in body:
         return [
             (
