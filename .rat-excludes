@@ -94,3 +94,13 @@ burr-redirect/**
 # headers, and their sources (in telemetry/ui/src/**/*.tsx) carry their own
 # ASF headers checked as part of the source release.
 burr/tracking/server/build/**
+
+# This fork's own files (cookpad-research/burr): the viewer image and its
+# workflows. They are not part of the Apache release.
+.github/workflows/burrtracker__push_to_platdev_ecr.yaml
+.github/workflows/burrtracker__push_to_prod_ecr.yaml
+.github/workflows/push_to_ecr.yaml
+burr/tracking/server/s3/deployment/entrypoint.sh
+s3_server_Dockerfile
+s3_server_entrypoint.sh
+s3_server_nginx.conf
