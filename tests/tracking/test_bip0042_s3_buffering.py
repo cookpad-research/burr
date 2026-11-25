@@ -17,8 +17,11 @@
 
 """BIP-0042: Tests for S3 buffering, settings, and SQS message parsing."""
 
+import asyncio
 import inspect
+import json
 from unittest.mock import AsyncMock, MagicMock
+from urllib.parse import quote_plus
 
 import pytest
 
@@ -29,6 +32,7 @@ from burr.tracking.server.s3.backend import (
     S3Settings,
     SQLiteS3Backend,
     TrackingMode,
+    _is_indexed_key,
     _parse_sqs_message_events,
     _query_s3_file,
 )
@@ -151,6 +155,53 @@ class TestParseSqsMessageEvents:
     def test_unknown_format_returns_none(self):
         assert _parse_sqs_message_events({"foo": "bar"}) is None
 
+    def test_native_s3_notification_key_is_url_decoded(self):
+        # S3 notifications URL-encode the key; the tracking client's time partition has ':' and '+'.
+        body = {
+            "Records": [
+                {
+                    "s3": {
+                        "object": {
+                            "key": "data/proj/2024/01/01/00/34%3A56.123456%2B00%3A00/pk/app/log.jsonl"
+                        }
+                    },
+                    "eventTime": "2024-01-01T00:00:00.000Z",
+                }
+            ]
+        }
+        events = _parse_sqs_message_events(body)
+        assert events is not None
+        assert events[0][0] == "data/proj/2024/01/01/00/34:56.123456+00:00/pk/app/log.jsonl"
+
+
+APP_PREFIX = "data/proj/2024/01/01/00/34:56.123456+00:00/pk/app"
+
+
+class TestIsIndexedKey:
+    @pytest.mark.parametrize(
+        "key",
+        [
+            f"{APP_PREFIX}/0c1d__log.jsonl",
+            f"{APP_PREFIX}/graph.json",
+            f"{APP_PREFIX}/metadata.json",
+        ],
+    )
+    def test_indexes_what_the_tracking_client_writes(self, key):
+        assert _is_indexed_key(key, "data")
+
+    @pytest.mark.parametrize(
+        "key",
+        [
+            None,
+            "",
+            "snapshots/2024-01-01.db",
+            "other/proj/app/log.jsonl",
+            f"{APP_PREFIX}/notes.txt",
+        ],
+    )
+    def test_skips_other_keys(self, key):
+        assert not _is_indexed_key(key, "data")
+
 
 class TestEventDrivenBackendMixin:
     def test_mixin_exists(self):
@@ -203,3 +254,47 @@ class TestHandleS3Event:
         assert "self" in params
         assert "s3_key" in params
         assert "event_time" in params
+
+
+class TestStartEventConsumer:
+    @pytest.mark.asyncio
+    async def test_indexes_graph_metadata_and_logs_and_skips_snapshots(self):
+        keys = [
+            f"{APP_PREFIX}/graph.json",
+            f"{APP_PREFIX}/metadata.json",
+            f"{APP_PREFIX}/0c1d__log.jsonl",
+            "snapshots/2024-01-01.db",
+        ]
+        body = {
+            "Records": [
+                # As S3 sends them: URL-encoded.
+                {
+                    "s3": {"object": {"key": quote_plus(key, safe="/")}},
+                    "eventTime": "2024-01-01T00:00:00.000Z",
+                }
+                for key in keys
+            ]
+        }
+        sqs = AsyncMock()
+        sqs.receive_message = AsyncMock(
+            side_effect=[
+                {"Messages": [{"Body": json.dumps(body), "ReceiptHandle": "r1"}]},
+                asyncio.CancelledError(),
+            ]
+        )
+        client_cm = MagicMock()
+        client_cm.__aenter__ = AsyncMock(return_value=sqs)
+        client_cm.__aexit__ = AsyncMock(return_value=None)
+
+        backend = _minimal_backend(
+            tracking_mode=TrackingMode.EVENT_DRIVEN, sqs_queue_url="https://queue", sqs_region="r"
+        )
+        backend._session = MagicMock()
+        backend._session.create_client = MagicMock(return_value=client_cm)
+        backend._handle_s3_event = AsyncMock()
+
+        with pytest.raises(asyncio.CancelledError):
+            await backend.start_event_consumer()
+
+        assert [c.args[0] for c in backend._handle_s3_event.await_args_list] == keys[:3]
+        sqs.delete_message.assert_awaited_once_with(QueueUrl="https://queue", ReceiptHandle="r1")

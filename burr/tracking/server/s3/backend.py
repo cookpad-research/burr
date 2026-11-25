@@ -26,6 +26,7 @@ import logging
 import operator
 import os.path
 import tempfile
+import urllib.parse
 import uuid
 from collections import Counter
 from typing import List, Literal, Optional, Sequence, Tuple, Type, TypeVar, Union
@@ -225,12 +226,27 @@ def _parse_sqs_message_events(
         for record in body["Records"]:
             out.append(
                 (
-                    record["s3"]["object"]["key"],
+                    # S3 notifications URL-encode the key; Burr's keys hold ':' and '+'.
+                    urllib.parse.unquote_plus(record["s3"]["object"]["key"]),
                     datetime.datetime.fromisoformat(record["eventTime"].replace("Z", "+00:00")),
                 )
             )
         return out
     return None
+
+
+def _is_indexed_key(s3_key: Optional[str], data_prefix: str) -> bool:
+    """Whether an S3 event's key is a file the index tracks.
+
+    The same files as the polling scan: everything the tracking client writes under the data
+    prefix -- the log files (.jsonl), and each application's graph.json and metadata.json.
+    Snapshots and other keys in the bucket are not indexed.
+    """
+    return (
+        bool(s3_key)
+        and s3_key.startswith(f"{data_prefix}/")
+        and s3_key.endswith((".jsonl", ".json"))
+    )
 
 
 class SQLiteS3Backend(
@@ -831,7 +847,7 @@ class SQLiteS3Backend(
                                     continue
 
                                 for s3_key, event_time in events:
-                                    if s3_key and s3_key.endswith(".jsonl"):
+                                    if _is_indexed_key(s3_key, self._data_prefix):
                                         await self._handle_s3_event(s3_key, event_time)
 
                                 await sqs_client.delete_message(
