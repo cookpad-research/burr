@@ -104,6 +104,7 @@ Common S3 server environment variables:
 * ``BURR_TRACKING_MODE`` (``POLLING`` or ``EVENT_DRIVEN``)
 * ``BURR_SQS_QUEUE_URL`` / ``BURR_SQS_REGION`` / ``BURR_SQS_WAIT_TIME_SECONDS``
 * ``BURR_S3_BUFFER_SIZE_MB``
+* ``BURR_INDEX_RETENTION_DAYS`` (default: keep all; set it to the bucket's lifecycle expiry)
 
 ---------------
 Terraform Setup
