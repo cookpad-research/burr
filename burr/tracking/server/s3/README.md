@@ -135,6 +135,11 @@ The following environment variables are used with defaults:
 | BURR_SNAPSHOT_INTERVAL_MILLISECONDS  | int                                | 3_600_000     |
 | BURR_LOAD_SNAPSHOT_ON_START          | bool                               | True          |
 | BURR_PRIOR_SNAPSHOTS_TO_KEEP         | int                                | 5             |
+| BURR_INDEX_RETENTION_DAYS            | int                                | None (keep)   |
+
+`BURR_INDEX_RETENTION_DAYS` removes an application from the index once its first file is that many
+days old (checked before each snapshot). Set it to the bucket's lifecycle expiry, so the UI does
+not list traces whose files are gone. A trace whose files are gone returns 404.
 
 To see how these are wired in, see the S3Settings class in [backend.py](backend.py). This leverages
 the [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/) library

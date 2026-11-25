@@ -34,6 +34,7 @@ from typing import List, Literal, Optional, Sequence, Tuple, Type, TypeVar, Unio
 import fastapi
 import pydantic
 from aiobotocore import session
+from botocore.exceptions import ClientError
 from fastapi import FastAPI
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
@@ -182,6 +183,9 @@ class S3Settings(BurrSettings):
     sqs_region: Optional[str] = None
     sqs_wait_time_seconds: int = 20  # SQS long polling timeout
     s3_buffer_size_mb: int = 10  # RAM buffer before spilling to disk
+    # Drop applications from the index once their first file is this old. Set it to the bucket's
+    # lifecycle expiry, so the index does not list traces whose files are gone. None keeps all.
+    index_retention_days: Optional[int] = None
 
     @field_validator("tracking_mode", mode="before")
     @classmethod
@@ -269,6 +273,7 @@ class SQLiteS3Backend(
         sqs_region: Optional[str] = None,
         sqs_wait_time_seconds: int = 20,
         s3_buffer_size_mb: int = 10,
+        index_retention_days: Optional[int] = None,
     ):
         self._backend_id = system.now().isoformat() + str(uuid.uuid4())
         self._bucket = s3_bucket
@@ -292,6 +297,7 @@ class SQLiteS3Backend(
         self._sqs_region = sqs_region
         self._sqs_wait_time_seconds = sqs_wait_time_seconds
         self._s3_buffer_size_mb = s3_buffer_size_mb
+        self._index_retention_days = index_retention_days
 
     async def load_snapshot(self):
         if not self._load_snapshot_on_start:
@@ -323,7 +329,45 @@ class SQLiteS3Backend(
     def settings_model(cls) -> Type[BaseSettings]:
         return S3Settings
 
+    async def prune_index(self) -> int:
+        """Removes the applications whose first file is older than the retention, with their log
+        files, and returns how many it removed.
+
+        The index only grows: nothing removes a row when S3 expires a file. A whole application
+        goes as soon as its oldest file passes the retention, so the viewer never shows part of a
+        trace. Applications with no log files go by the time they were indexed.
+        """
+        if self._index_retention_days is None:
+            return 0
+        cutoff = system.now() - datetime.timedelta(days=self._index_retention_days)
+        expired_ids = set(
+            await LogFile.filter(created_at__lt=cutoff)
+            .distinct()
+            .values_list("application_id", flat=True)
+        )
+        expired_ids.update(
+            await Application.filter(created_at__lt=cutoff, log_files=None).values_list(
+                "id", flat=True
+            )
+        )
+        if not expired_ids:
+            return 0
+        async with transactions.in_transaction():
+            await LogFile.filter(application_id__in=expired_ids).delete()
+            await Application.filter(id__in=expired_ids).delete()
+        logger.info(
+            f"Removed {len(expired_ids)} applications older than "
+            f"{self._index_retention_days} days from the index"
+        )
+        return len(expired_ids)
+
     async def snapshot(self):
+        # Prune first, so the snapshot holds the pruned index. A failed prune must not stop the
+        # snapshot: the next one tries again.
+        try:
+            await self.prune_index()
+        except Exception:
+            logger.exception("Failed to prune the index")
         path = settings.DB_PATH
         timestamp = timestamp_to_reverse_alphabetical(system.now())
         # latest
@@ -742,33 +786,46 @@ class SQLiteS3Backend(
                 name=app_id, project__name=project_id, partition_key=partition_key
             )
         )
-        applications = await query.all()
-        application = applications[0]
+        application = await query.first()
+        if application is None:
+            raise fastapi.HTTPException(
+                status_code=404,
+                detail=f"App: {app_id} from project: {project_id} not found",
+            )
         application_logs = await LogFile.filter(application__id=application.id).order_by(
             "-created_at"
         )
-        async with self._session.create_client("s3") as client:
-            # Get all the files (BIP-0042: use buffered reading for large files)
-            files = await utils.gather_with_concurrency(
-                1,
-                _query_s3_file(
-                    self._bucket,
-                    application.graph_file_pointer,
-                    client,
-                    self._s3_buffer_size_mb,
-                ),
-                *itertools.chain(
+        try:
+            async with self._session.create_client("s3") as client:
+                # Get all the files (BIP-0042: use buffered reading for large files)
+                files = await utils.gather_with_concurrency(
+                    1,
                     _query_s3_file(
                         self._bucket,
-                        log_file.s3_path,
+                        application.graph_file_pointer,
                         client,
                         self._s3_buffer_size_mb,
-                    )
-                    for log_file in application_logs
-                ),
-            )
+                    ),
+                    *itertools.chain(
+                        _query_s3_file(
+                            self._bucket,
+                            log_file.s3_path,
+                            client,
+                            self._s3_buffer_size_mb,
+                        )
+                        for log_file in application_logs
+                    ),
+                )
+        except ClientError as e:
+            # S3 expired a file of this trace (the bucket's lifecycle) before the index dropped it.
+            if e.response.get("Error", {}).get("Code") not in ("NoSuchKey", "404"):
+                raise
+            raise fastapi.HTTPException(
+                status_code=404,
+                detail=f"App: {app_id} from project: {project_id} has files that are gone from S3 "
+                "(expired)",
+            ) from e
         graph_data = ApplicationModel.parse_raw(files[0])
-        # TODO -- deal with what happens if the application is None
         # TODO -- handle metadata
         # metadata = ApplicationMetadataModel.parse_raw(files[1])
         steps = Step.from_logs(list(itertools.chain(*[f.splitlines() for f in files[1:]])))

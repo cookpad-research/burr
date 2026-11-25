@@ -18,6 +18,7 @@
 """BIP-0042: Tests for S3 buffering, settings, and SQS message parsing."""
 
 import asyncio
+import datetime
 import inspect
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -27,7 +28,13 @@ import pytest
 
 pytest.importorskip("aiobotocore")
 
+from botocore.exceptions import ClientError
+from fastapi import HTTPException
+from tortoise import Tortoise
+
+from burr import system
 from burr.tracking.server.backend import EventDrivenBackendMixin
+from burr.tracking.server.s3 import backend as s3_backend
 from burr.tracking.server.s3.backend import (
     S3Settings,
     SQLiteS3Backend,
@@ -36,6 +43,7 @@ from burr.tracking.server.s3.backend import (
     _parse_sqs_message_events,
     _query_s3_file,
 )
+from burr.tracking.server.s3.models import Application, LogFile, Project
 
 
 def _minimal_backend(**kwargs):
@@ -76,6 +84,11 @@ class TestS3Settings:
     def test_s3_settings_has_s3_buffer_size_mb(self):
         assert "s3_buffer_size_mb" in S3Settings.model_fields
         assert S3Settings.model_fields["s3_buffer_size_mb"].default == 10
+
+    def test_index_retention_days_defaults_to_keep_all(self, monkeypatch):
+        assert S3Settings(s3_bucket="test").index_retention_days is None
+        monkeypatch.setenv("BURR_INDEX_RETENTION_DAYS", "30")
+        assert S3Settings(s3_bucket="test").index_retention_days == 30
 
     def test_s3_settings_coerces_sqs_string_to_event_driven(self):
         settings = S3Settings(s3_bucket="test", tracking_mode="SQS")
@@ -298,3 +311,131 @@ class TestStartEventConsumer:
 
         assert [c.args[0] for c in backend._handle_s3_event.await_args_list] == keys[:3]
         sqs.delete_message.assert_awaited_once_with(QueueUrl="https://queue", ReceiptHandle="r1")
+
+
+@pytest.fixture
+async def index_db():
+    await Tortoise.init(
+        db_url="sqlite://:memory:", modules={"models": ["burr.tracking.server.s3.models"]}
+    )
+    await Tortoise.generate_schemas()
+    yield
+    await Tortoise.close_connections()
+
+
+def _days_ago(days: float) -> datetime.datetime:
+    return system.now() - datetime.timedelta(days=days)
+
+
+async def _app(project: Project, name: str, created_days_ago: float, *log_days_ago: float):
+    app = await Application.create(
+        name=name,
+        partition_key="pk",
+        project=project,
+        created_at=_days_ago(created_days_ago),
+        graph_file_pointer=f"{APP_PREFIX}/graph.json",
+    )
+    for i, days in enumerate(log_days_ago):
+        await LogFile.create(
+            s3_path=f"{APP_PREFIX}/{name}-{i}__log.jsonl",
+            application=app,
+            tracker_id="t",
+            min_sequence_id=i,
+            max_sequence_id=i,
+            created_at=_days_ago(days),
+        )
+    return app
+
+
+class TestPruneIndex:
+    @pytest.mark.asyncio
+    async def test_removes_whole_applications_whose_first_file_expired(self, index_db):
+        project = await Project.create(name="proj", created_at=_days_ago(100))
+        # Its first log file is past the retention: the whole trace goes, the recent file too.
+        await _app(project, "old", 31, 31, 1)
+        await _app(project, "recent", 1, 1, 0)
+        await _app(project, "old-without-logs", 31)
+        await _app(project, "recent-without-logs", 1)
+
+        removed = await _minimal_backend(index_retention_days=30).prune_index()
+
+        assert removed == 2
+        assert sorted(await Application.all().values_list("name", flat=True)) == [
+            "recent",
+            "recent-without-logs",
+        ]
+        assert await LogFile.all().count() == 2
+        assert await Project.all().count() == 1
+
+    @pytest.mark.asyncio
+    async def test_keeps_everything_without_a_retention(self, index_db):
+        project = await Project.create(name="proj", created_at=_days_ago(100))
+        await _app(project, "old", 400, 400)
+
+        assert await _minimal_backend().prune_index() == 0
+        assert await Application.all().count() == 1
+
+
+class TestSnapshotPrunes:
+    @pytest.mark.asyncio
+    async def test_saves_the_snapshot_even_when_the_prune_fails(self, tmp_path, monkeypatch):
+        db = tmp_path / "db.sqlite3"
+        db.write_bytes(b"db")
+        monkeypatch.setattr(s3_backend.settings, "DB_PATH", str(db))
+        s3 = AsyncMock()
+        client_cm = MagicMock()
+        client_cm.__aenter__ = AsyncMock(return_value=s3)
+        client_cm.__aexit__ = AsyncMock(return_value=None)
+        backend = _minimal_backend(index_retention_days=30)
+        backend._session = MagicMock()
+        backend._session.create_client = MagicMock(return_value=client_cm)
+        backend.prune_index = AsyncMock(side_effect=RuntimeError("db locked"))
+
+        await backend.snapshot()
+
+        backend.prune_index.assert_awaited_once()
+        s3.put_object.assert_awaited_once()
+
+
+def _s3_error(code: str) -> ClientError:
+    return ClientError({"Error": {"Code": code, "Message": code}}, "GetObject")
+
+
+class TestGetApplicationLogsMissingFiles:
+    def _backend_with_s3_error(self, code: str):
+        s3 = AsyncMock()
+        s3.get_object = AsyncMock(side_effect=_s3_error(code))
+        client_cm = MagicMock()
+        client_cm.__aenter__ = AsyncMock(return_value=s3)
+        client_cm.__aexit__ = AsyncMock(return_value=None)
+        backend = _minimal_backend()
+        backend._session = MagicMock()
+        backend._session.create_client = MagicMock(return_value=client_cm)
+        return backend
+
+    @pytest.mark.asyncio
+    async def test_a_file_gone_from_s3_is_a_404(self, index_db):
+        project = await Project.create(name="proj", created_at=_days_ago(1))
+        await _app(project, "app", 1, 1)
+        backend = self._backend_with_s3_error("NoSuchKey")
+
+        with pytest.raises(HTTPException) as error:
+            await backend.get_application_logs(MagicMock(), "proj", "app", "pk")
+        assert error.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_other_s3_errors_are_not_hidden(self, index_db):
+        project = await Project.create(name="proj", created_at=_days_ago(1))
+        await _app(project, "app", 1, 1)
+        backend = self._backend_with_s3_error("AccessDenied")
+
+        with pytest.raises(ClientError):
+            await backend.get_application_logs(MagicMock(), "proj", "app", "pk")
+
+    @pytest.mark.asyncio
+    async def test_an_application_not_in_the_index_is_a_404(self, index_db):
+        await Project.create(name="proj", created_at=_days_ago(1))
+
+        with pytest.raises(HTTPException) as error:
+            await _minimal_backend().get_application_logs(MagicMock(), "proj", "gone", "pk")
+        assert error.value.status_code == 404
