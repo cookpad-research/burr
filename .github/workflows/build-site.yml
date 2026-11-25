@@ -33,6 +33,8 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    # It publishes Apache's website branches: only in apache/burr, not in a fork.
+    if: github.repository == 'apache/burr'
     runs-on: ubuntu-latest
 
     steps:
