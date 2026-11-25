@@ -1,3 +1,21 @@
+#<!--
+#     Licensed to the Apache Software Foundation (ASF) under one
+#     or more contributor license agreements.  See the NOTICE file
+#     distributed with this work for additional information
+#     regarding copyright ownership.  The ASF licenses this file
+#     to you under the Apache License, Version 2.0 (the
+#     "License"); you may not use this file except in compliance
+#     with the License.  You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#     Unless required by applicable law or agreed to in writing,
+#     software distributed under the License is distributed on an
+#     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+#     KIND, either express or implied.  See the License for the
+#     specific language governing permissions and limitations
+#     under the License.
+#-->
 name: documentation
 
 on:
@@ -10,16 +28,17 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 concurrency: ci-${{ github.ref }}
 
 jobs:
   docs:
+    # It publishes Apache's docs site and comments on the PR: only in apache/burr, not in a fork.
+    if: github.repository == 'apache/burr'
     runs-on: ubuntu-latest
     env:
       PR_PATH: pull/${{github.event.number}}
-      BASE_URL: https://burr.dagworks.io/pull/${{github.event.number}}
+      BASE_URL: https://burr.apache.org/pull/${{github.event.number}}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
@@ -31,10 +50,10 @@ jobs:
       - name: Sphinx build
         run: |
           sphinx-build docs -b dirhtml _build
-          echo "burr.dagworks.io" > _build/CNAME # keep the cname file which this clobbers -- todo, unhardcode
+          echo "burr.apache.org" > _build/CNAME # keep the cname file which this clobbers -- todo, unhardcode
       - name: Comment on PR
         uses: hasura/comment-progress@v2.2.0
-        if: github.ref != 'refs/heads/main'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
@@ -43,7 +62,7 @@ jobs:
           message: "Starting deployment of preview ⏳..."
       - name: Build PR preview website
         uses: peaceiris/actions-gh-pages@v3
-        if: github.ref != 'refs/heads/main'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: _build/
@@ -58,7 +77,7 @@ jobs:
           keep_files: true # Add this line to keep existing files in the gh-pages branch
       - name: Update comment
         uses: hasura/comment-progress@v2.2.0
-        if: github.ref != 'refs/heads/main'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}

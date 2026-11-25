@@ -1,3 +1,22 @@
+<!--
+     Licensed to the Apache Software Foundation (ASF) under one
+     or more contributor license agreements.  See the NOTICE file
+     distributed with this work for additional information
+     regarding copyright ownership.  The ASF licenses this file
+     to you under the Apache License, Version 2.0 (the
+     "License"); you may not use this file except in compliance
+     with the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing,
+     software distributed under the License is distributed on an
+     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+     KIND, either express or implied.  See the License for the
+     specific language governing permissions and limitations
+     under the License.
+-->
+
 # Simulations
 
 At a high level, simulations generally run over a set of time steps and maintain state.
@@ -5,8 +24,8 @@ The user then manages the state, which becomes the input to the next time step, 
 as output data to analyze. Burr provides a simple way for you to construct, manage, and
 introspect the state of your simulation.
 
-This example is a WIP -- see the placeholder/example sketch in the [repository](https://github.com/DAGWorks-Inc/burr/tree/main/examples/simulation).
-We're actively looking for contributors + ideas via [this issue](https://github.com/DAGWorks-Inc/burr/issues/136) to track.
+This example is a WIP -- see the placeholder/example sketch in the [repository](https://github.com/apache/burr/tree/main/examples/simulation).
+We're actively looking for contributors + ideas via [this issue](https://github.com/apache/burr/issues/136) to track.
 
 
 For instance:
@@ -32,7 +51,7 @@ This is a special case of time-series forecasting, in which one wants to simulat
 - `construct_portfolio` - uses the forecast to construct a portfolio
 - `evaluate_portfolio` - evaluates the portfolio
 
-Each one of these could be a DAG using [Hamilton](https://github.com/dagworks-inc/hamilton), or running any custom code.
+Each one of these could be a DAG using [Hamilton](https://github.com/apache/hamilton), or running any custom code.
 
 ## Multi-agent simulation
 

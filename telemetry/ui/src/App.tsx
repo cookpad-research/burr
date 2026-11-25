@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { ProjectList } from './components/routes/ProjectList';
@@ -12,6 +31,7 @@ import { StreamingChatbotWithTelemetry } from './examples/StreamingChatbot';
 import { AdminView } from './components/routes/AdminView';
 import { AnnotationsViewContainer } from './components/routes/app/AnnotationsView';
 import { DeepResearcherWithTelemetry } from './examples/DeepResearcher';
+import { useTheme } from './hooks/useTheme';
 
 /**
  * Basic application. We have an AppContainer -- this has a breadcrumb and a sidebar.
@@ -29,9 +49,12 @@ import { DeepResearcherWithTelemetry } from './examples/DeepResearcher';
  * @returns A rendered application object
  */
 const App = () => {
+  // Initialize theme at the app root so the `dark` class is applied on load
+  // (respects system preference, falls back to stored manual override).
+  useTheme();
   return (
     <QueryClientProvider client={new QueryClient()}>
-      <Router>
+      <Router basename={window.__BURR_BASE_PATH__ || ''}>
         <AppContainer>
           <Routes>
             <Route path="/" element={<Navigate to="/projects" />} />
